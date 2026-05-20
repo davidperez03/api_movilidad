@@ -1,0 +1,11 @@
+{
+  "installCommand": "pip install -r requirements.txt",
+  "env": {
+    "DATABASE_POOL_SIZE": "1",
+    "DATABASE_MAX_OVERFLOW": "0",
+    "PYTHONUNBUFFERED": "1"
+  },
+  "rewrites": [
+    { "source": "/(.*)", "destination": "/api/index" }
+  ]
+}

@@ -1,0 +1,71 @@
+[tool.poetry]
+name = "users-api"
+version = "1.0.0"
+description = "API enterprise de gestión de usuarios — Hexagonal Architecture"
+authors = ["Dev Team"]
+
+[tool.poetry.dependencies]
+python = "^3.12"
+fastapi = "^0.115.0"
+uvicorn = {extras = ["standard"], version = "^0.32.0"}
+sqlalchemy = {extras = ["asyncio"], version = "^2.0.36"}
+asyncpg = "^0.30.0"
+pydantic = {extras = ["email"], version = "^2.10.0"}
+pydantic-settings = "^2.6.0"
+PyJWT = "^2.8.0"
+bcrypt = "^4.2.0"
+redis = {extras = ["asyncio"], version = "^5.2.0"}
+slowapi = "^0.1.9"
+uuid6 = "^2025.0.1"
+python-ulid = "^3.1.0"
+alembic = "^1.14.0"
+aiosmtplib = "^5.1.0"
+httpx = "^0.28.0"
+python-json-logger = "^2.0.7"
+prometheus-client = "^0.20.0"
+
+[tool.poetry.group.dev.dependencies]
+pytest = "^8.3.0"
+pytest-asyncio = "^0.24.0"
+pytest-cov = "^6.0.0"
+anyio = "^4.7.0"
+poetry = "^1.8.4"
+testcontainers = {extras = ["postgres"], version = "^4.8.0"}
+
+[tool.pytest.ini_options]
+asyncio_mode = "auto"
+asyncio_default_fixture_loop_scope = "session"
+asyncio_default_test_loop_scope = "session"
+testpaths = ["tests"]
+pythonpath = ["src"]
+addopts = "-v --tb=short"
+# Para correr con coverage: pytest --cov=src --cov-report=term-missing --cov-fail-under=70
+
+[tool.coverage.run]
+source = ["src"]
+omit = [
+    "src/app/infrastructure/observability.py",
+    "src/app/__init__.py",
+    "*/migrations/*",
+    "alembic/*",
+]
+
+[tool.coverage.report]
+exclude_lines = [
+    "pragma: no cover",
+    "if TYPE_CHECKING:",
+    "raise NotImplementedError",
+    "if __name__ == .__main__.:",
+]
+
+[tool.ruff]
+line-length = 100
+target-version = "py312"
+
+[tool.ruff.lint]
+select = ["E", "F", "I", "N", "S", "B", "UP"]
+ignore = ["S101", "S105", "S106", "B008"]  # Allow assert in tests, secret patterns en config
+
+[build-system]
+requires = ["poetry-core"]
+build-backend = "poetry.core.masonry.api"
