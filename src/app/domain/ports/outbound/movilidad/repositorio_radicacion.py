@@ -8,7 +8,6 @@ class FiltrosRadicacion:
     def __init__(
         self,
         cuenta_id: UUID | None = None,
-        traslado_id: UUID | None = None,
         estado: EstadoRadicacion | None = None,
         vencidos: bool | None = None,
         tamanio: int = 20,
@@ -16,7 +15,6 @@ class FiltrosRadicacion:
         organization_id: UUID | None = None,
     ):
         self.cuenta_id = cuenta_id
-        self.traslado_id = traslado_id
         self.estado = estado
         self.vencidos = vencidos
         self.tamanio = tamanio

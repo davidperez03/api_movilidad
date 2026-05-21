@@ -21,22 +21,31 @@ description: >
 Todo cambio sigue este camino sin excepción:
 
 ```
-main (vacío / init)
+main
   └── develop
         └── feature/XXX-descripcion   ← aquí se trabaja
               │
               └──→ develop             ← merge cuando el feature está listo
                     └── release/vX.Y.Z ← cuando develop está listo para salir
-                          ├──→ main    ← merge + tag vX.Y.Z
-                          └──→ develop ← merge de vuelta
+                          │  chore(release) commit va AQUÍ, en esta rama
+                          ├──→ main + tag vX.Y.Z   ← merge --no-ff
+                          └──→ develop              ← merge --no-ff desde release (NO desde main)
+```
+
+**REGLA CRÍTICA — orden del release:**
+```
+release/vX.Y.Z
+  → chore(release): prepare vX.Y.Z   ← el commit vive en release, no en main
+  → merge --no-ff → main + tag
+  → merge --no-ff → develop          ← desde release, nunca "git merge main"
 ```
 
 **Hotfix** es el único caso que no pasa por feature ni release:
 ```
 main
   └── hotfix/XXX-descripcion
-        ├──→ main    ← merge + tag de parche
-        └──→ develop ← merge de vuelta
+        ├──→ main + tag de parche
+        └──→ develop
 ```
 
 ---
@@ -48,7 +57,7 @@ main
 | Rama | Propósito |
 |------|-----------|
 | `main` | Producción estable — solo recibe merges de `release/` y `hotfix/` |
-| `develop` | Integración — solo recibe merges de `feature/`, `bugfix/` y `hotfix/` |
+| `develop` | Integración — solo recibe merges de `feature/`, `bugfix/` y `release/` |
 
 ### Temporales (se crean y se borran tras el merge)
 
@@ -81,10 +90,12 @@ git checkout -b feature/001-descripcion
 git add src/archivo1.py src/archivo2.py
 git commit -m "feat(scope): descripción"
 
-# 3. Subir y abrir PR hacia develop
-git push -u origin feature/001-descripcion
+# 3. Merge a develop (--no-ff conserva el contexto de la rama)
+git checkout develop
+git merge --no-ff feature/001-descripcion -m "merge(develop): feature/001-descripcion"
+git push origin develop
 
-# 4. Después del merge: borrar rama
+# 4. Borrar rama
 git branch -d feature/001-descripcion
 git push origin --delete feature/001-descripcion
 ```
@@ -100,30 +111,28 @@ Solo cuando `develop` tiene todo lo que va en la versión.
 git checkout develop && git pull origin develop
 git checkout -b release/vX.Y.Z
 
-# 2. Actualizar versión y CHANGELOG
-#    - pyproject.toml → version = "X.Y.Z"
-#    - CHANGELOG.md   → agregar sección [X.Y.Z]
+# 2. El chore(release) va AQUÍ, en la rama release — nunca en main
+git commit --allow-empty -m "chore(release): prepare vX.Y.Z"
+# (si hay cambios reales: bump version en pyproject.toml, actualizar CHANGELOG)
 
-git add pyproject.toml CHANGELOG.md
-git commit -m "chore(release): prepare vX.Y.Z"
-
-# 3. Subir y abrir PR hacia main
-git push -u origin release/vX.Y.Z
-
-# 4. Tras merge a main: tag anotado
+# 3. Merge a main + tag
 git checkout main && git pull origin main
-git tag -a vX.Y.Z -m "Release vX.Y.Z — descripción breve"
+git merge --no-ff release/vX.Y.Z -m "merge(main): release/vX.Y.Z"
+git tag vX.Y.Z
 git push origin main --tags
 
-# 5. Merge de vuelta a develop
+# 4. Merge de vuelta a develop — DESDE RELEASE, no desde main
 git checkout develop
-git merge main
+git merge --no-ff release/vX.Y.Z -m "merge(develop): release/vX.Y.Z"
 git push origin develop
 
-# 6. Borrar rama release
+# 5. Borrar rama release
 git branch -d release/vX.Y.Z
 git push origin --delete release/vX.Y.Z
 ```
+
+**Por qué merge desde release y no desde main:**
+Si haces `git merge main` en develop obtienes todos los merges históricos de main en el grafo de develop, contaminando el historial. El merge desde la rama release lleva solo los commits de esa release.
 
 ---
 
@@ -138,8 +147,12 @@ git checkout -b bugfix/002-descripcion
 git add src/archivo.py
 git commit -m "fix(scope): descripción"
 
-git push -u origin bugfix/002-descripcion
-# PR hacia develop
+git checkout develop
+git merge --no-ff bugfix/002-descripcion -m "merge(develop): bugfix/002-descripcion"
+git push origin develop
+
+git branch -d bugfix/002-descripcion
+git push origin --delete bugfix/002-descripcion
 ```
 
 ---
@@ -155,17 +168,19 @@ git checkout -b hotfix/003-descripcion
 git add src/archivo.py
 git commit -m "fix(scope): corrección urgente"
 
-git push -u origin hotfix/003-descripcion
-
-# PR hacia main Y hacia develop (los dos son obligatorios)
-
-# Tras merge a main: tag de parche
-git checkout main && git pull origin main
-git tag -a vX.Y.Z -m "Hotfix vX.Y.Z"
+# Merge a main + tag
+git checkout main
+git merge --no-ff hotfix/003-descripcion -m "merge(main): hotfix/003-descripcion"
+git tag vX.Y.Z
 git push origin main --tags
 
-# Merge a develop
-git checkout develop && git merge main && git push origin develop
+# Merge a develop — desde hotfix, no desde main
+git checkout develop
+git merge --no-ff hotfix/003-descripcion -m "merge(develop): hotfix/003-descripcion"
+git push origin develop
+
+git branch -d hotfix/003-descripcion
+git push origin --delete hotfix/003-descripcion
 ```
 
 ---
@@ -199,11 +214,7 @@ git checkout develop && git merge main && git push origin develop
 ### Breaking Change
 
 ```bash
-# Con ! en el tipo
 feat(api)!: cambiar formato de respuesta
-
-# O con footer
-feat(api): cambiar formato de respuesta
 
 BREAKING CHANGE: el campo data ahora es array
 ```
@@ -223,6 +234,8 @@ BREAKING CHANGE: el campo data ahora es array
 | `config` | Settings, variables de entorno |
 | `tests` | Suite de pruebas |
 | `movilidad` | Módulo de movilidad vehicular |
+| `parqueadero` | Módulo de parqueadero |
+| `nunc` | Módulo NUNC |
 
 ---
 
@@ -230,7 +243,7 @@ BREAKING CHANGE: el campo data ahora es array
 
 | Incremento | Cuándo | Ejemplo |
 |------------|--------|---------|
-| PATCH x.y.**Z** | Solo `fix`, `security`, `perf`, `chore` | v0.1.0 → v0.1.1 |
+| PATCH x.y.**Z** | Solo `fix`, `security`, `perf`, `chore` | v0.2.0 → v0.2.1 |
 | MINOR x.**Y**.0 | Al menos un `feat` sin breaking changes | v0.1.1 → v0.2.0 |
 | MAJOR **X**.0.0 | Cualquier `BREAKING CHANGE` | v0.9.0 → v1.0.0 |
 
@@ -241,14 +254,13 @@ git log $(git describe --tags --abbrev=0)..HEAD --oneline
 
 ---
 
-## Checklist antes de PR
+## Checklist antes de hacer release
 
 ```
-[ ] pytest --tb=short        → todos pasan
-[ ] ruff check .             → sin errores
-[ ] ruff format --check .    → código formateado
-[ ] Squash de commits WIP    → historial limpio
-[ ] Sin archivos sensibles   → no .env con secretos reales
+[ ] PYTHONPATH=src venv/Scripts/python.exe -m pytest tests/unit/ -q  → 0 fallos
+[ ] PYTHONPATH=src venv/Scripts/python.exe -c "from app.main import app; print('OK')"
+[ ] Sin archivos sensibles (.env con secretos reales)
+[ ] Historial de commits limpio (sin WIP)
 ```
 
 ---
@@ -257,14 +269,8 @@ git log $(git describe --tags --abbrev=0)..HEAD --oneline
 
 ```bash
 git branch -a                          # todas las ramas
+git log --oneline --all                # historial completo con ramas
 git log --oneline -10                  # historial reciente
-git log origin/develop..HEAD --oneline # commits de la rama actual vs develop
-
-# Squash antes del PR (N = número de commits a unir)
-git rebase -i HEAD~N
-
-# Rebase sobre develop actualizado
-git fetch origin && git rebase origin/develop
 
 # Borrar ramas tras merge
 git branch -d nombre-rama

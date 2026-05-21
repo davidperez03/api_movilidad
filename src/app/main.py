@@ -22,6 +22,8 @@ from app.api.v1.routers.movilidad import cuentas as mov_cuentas
 from app.api.v1.routers.movilidad import traslados as mov_traslados
 from app.api.v1.routers.movilidad import radicaciones as mov_radicaciones
 from app.api.v1.routers.nunc import sesiones as nunc_sesiones
+from app.api.v1.routers.parqueadero import vehiculos as parq_vehiculos
+from app.api.v1.routers.parqueadero import inspecciones as parq_inspecciones
 from app.infrastructure.persistence.database import init_db
 
 _IS_DEV = config.APP_ENV == "development"
@@ -211,6 +213,10 @@ def crear_app() -> FastAPI:
 
     # NUNC
     app.include_router(nunc_sesiones.router, prefix=f"{prefix}/nunc", tags=["NUNC"], dependencies=[_limiter_global])
+
+    # Parqueadero
+    app.include_router(parq_vehiculos.router,    prefix=f"{prefix}/parqueadero/vehiculos",    tags=["Parqueadero — Vehículos"],    dependencies=[_limiter_global])
+    app.include_router(parq_inspecciones.router, prefix=f"{prefix}/parqueadero/inspecciones", tags=["Parqueadero — Inspecciones"], dependencies=[_limiter_global])
 
     @app.get("/", include_in_schema=False)
     async def root():
