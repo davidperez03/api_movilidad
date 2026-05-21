@@ -4,7 +4,7 @@ from uuid import UUID
 from app.domain.entities.movilidad.radicacion import Radicacion
 from app.domain.ports.outbound.movilidad.repositorio_cuenta import RepositorioCuenta
 from app.domain.ports.outbound.movilidad.repositorio_radicacion import RepositorioRadicacion
-from app.domain.ports.outbound.movilidad.repositorio_traslado import RepositorioTraslado
+from app.domain.ports.outbound.movilidad.repositorio_traslado import RepositorioTraslado, FiltrosTraslado
 from app.domain.entities.movilidad.traslado import EstadoTraslado
 from app.domain.exceptions import ReglaDeNegocioViolada, EntidadNoEncontrada
 
@@ -14,7 +14,7 @@ logger = logging.getLogger(__name__)
 @dataclass
 class ComandoCrearRadicacion:
     cuenta_public_id: str
-    organismo_origen_id: UUID | None = None
+    organismo_origen_id: UUID
     empresa_transportadora_id: UUID | None = None
     creado_por: UUID | None = None
     organization_id: UUID | None = None
@@ -36,8 +36,10 @@ class CrearRadicacionUseCase:
         if not cuenta:
             raise EntidadNoEncontrada("Cuenta no encontrada")
 
+        if await self._repo_radicacion.tiene_proceso_activo(cuenta.id):
+            raise ReglaDeNegocioViolada("Ya existe una radicación activa para esta cuenta.")
+
         # Debe haber un traslado aprobado para poder radicar
-        from app.domain.ports.outbound.movilidad.repositorio_traslado import FiltrosTraslado
         pagina = await self._repo_traslado.listar(
             FiltrosTraslado(cuenta_id=cuenta.id, estado=EstadoTraslado.APROBADO, tamanio=1)
         )
@@ -46,8 +48,18 @@ class CrearRadicacionUseCase:
                 "No existe un traslado aprobado para esta cuenta. Apruebe el traslado primero."
             )
 
-        if await self._repo_radicacion.tiene_proceso_activo(cuenta.id):
-            raise ReglaDeNegocioViolada("Ya existe una radicación activa para esta cuenta.")
+        # Validar secuencia: si el último proceso completado fue una radicación,
+        # debe trasladarse primero antes de otra radicación.
+        ultima_rad = await self._repo_radicacion.ultimo_completado(cuenta.id)
+        if ultima_rad:
+            ultimo_traslado = await self._repo_traslado.ultimo_completado(cuenta.id)
+            if ultimo_traslado is None or (
+                ultima_rad.actualizado_en and ultimo_traslado.actualizado_en and
+                ultima_rad.actualizado_en > ultimo_traslado.actualizado_en
+            ):
+                raise ReglaDeNegocioViolada(
+                    "Este vehículo fue radicado previamente. Debe ser trasladado primero antes de otra radicación."
+                )
 
         radicacion = Radicacion(
             cuenta_id=cuenta.id,

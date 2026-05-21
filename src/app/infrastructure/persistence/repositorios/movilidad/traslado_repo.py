@@ -1,29 +1,16 @@
-import base64
-import json
-from datetime import datetime, timezone
+from datetime import datetime
 from uuid import UUID
 from typing import Optional
 from sqlalchemy import select, and_
 from sqlalchemy.ext.asyncio import AsyncSession
-from app.domain.entities.movilidad.traslado import Traslado, EstadoTraslado
+from app.domain.entities.movilidad.traslado import Traslado, EstadoTraslado, ESTADOS_TERMINALES_TRASLADO
 from app.domain.ports.outbound.movilidad.repositorio_traslado import (
     RepositorioTraslado, FiltrosTraslado, PaginaTraslados,
 )
 from app.infrastructure.persistence.modelos.movilidad.traslado_modelo import TrasladoModelo
+from app.infrastructure.persistence.repositorios._cursor import encode_cursor, decode_cursor
 
-_ESTADOS_ACTIVOS = [e.value for e in EstadoTraslado if e != EstadoTraslado.TRASLADADO]
-
-
-def _encode_cursor(creado_en: datetime, id: UUID) -> str:
-    return base64.urlsafe_b64encode(json.dumps([creado_en.isoformat(), str(id)]).encode()).decode()
-
-
-def _decode_cursor(cursor: str) -> tuple[datetime, UUID]:
-    data = json.loads(base64.urlsafe_b64decode(cursor.encode()).decode())
-    dt = datetime.fromisoformat(data[0])
-    if dt.tzinfo is None:
-        dt = dt.replace(tzinfo=timezone.utc)
-    return dt, UUID(data[1])
+_ESTADOS_ACTIVOS = [e.value for e in EstadoTraslado if e.value not in ESTADOS_TERMINALES_TRASLADO]
 
 
 class TrasladoRepositorioSQL(RepositorioTraslado):
@@ -92,7 +79,7 @@ class TrasladoRepositorioSQL(RepositorioTraslado):
             conds.append(TrasladoModelo.vencimiento < func.current_date())
             conds.append(TrasladoModelo.estado.in_(_ESTADOS_ACTIVOS))
         if filtros.cursor:
-            cursor_dt, cursor_id = _decode_cursor(filtros.cursor)
+            cursor_dt, cursor_id = decode_cursor(filtros.cursor)
             conds.append(
                 (TrasladoModelo.creado_en < cursor_dt)
                 | ((TrasladoModelo.creado_en == cursor_dt) & (TrasladoModelo.id < cursor_id))
@@ -106,7 +93,7 @@ class TrasladoRepositorioSQL(RepositorioTraslado):
         filas = (await self._session.execute(stmt)).scalars().all()
         tiene_siguiente = len(filas) > filtros.tamanio
         items = [self._a_entidad(f) for f in filas[:filtros.tamanio]]
-        siguiente_cursor = _encode_cursor(items[-1].creado_en, items[-1].id) if tiene_siguiente else None
+        siguiente_cursor = encode_cursor(items[-1].creado_en, items[-1].id) if tiene_siguiente else None
         return PaginaTraslados(items=items, siguiente_cursor=siguiente_cursor, tamanio=len(items))
 
     async def tiene_proceso_activo(self, cuenta_id: UUID) -> bool:
@@ -116,6 +103,19 @@ class TrasladoRepositorioSQL(RepositorioTraslado):
             .limit(1)
         )
         return result.scalar_one_or_none() is not None
+
+    async def ultimo_completado(self, cuenta_id: UUID) -> Optional[Traslado]:
+        result = await self._session.execute(
+            select(TrasladoModelo)
+            .where(
+                TrasladoModelo.cuenta_id == cuenta_id,
+                TrasladoModelo.estado == EstadoTraslado.TRASLADADO.value,
+            )
+            .order_by(TrasladoModelo.actualizado_en.desc())
+            .limit(1)
+        )
+        m = result.scalar_one_or_none()
+        return self._a_entidad(m) if m else None
 
     def _a_entidad(self, m: TrasladoModelo) -> Traslado:
         return Traslado(

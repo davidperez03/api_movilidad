@@ -3,7 +3,7 @@ from dataclasses import dataclass
 from uuid import UUID
 from app.domain.entities.movilidad.radicacion import Radicacion, EstadoRadicacion
 from app.domain.ports.outbound.movilidad.repositorio_radicacion import RepositorioRadicacion
-from app.domain.exceptions import EntidadNoEncontrada
+from app.domain.exceptions import EntidadNoEncontrada, ReglaDeNegocioViolada
 
 logger = logging.getLogger(__name__)
 
@@ -28,6 +28,14 @@ class CambiarEstadoRadicacionUseCase:
         radicacion = await self._repo.buscar_por_public_id(cmd.radicacion_public_id)
         if not radicacion:
             raise EntidadNoEncontrada("Radicación no encontrada")
+
+        if cmd.nuevo_estado == EstadoRadicacion.DEVUELTO:
+            empresa = cmd.empresa_transportadora_id or radicacion.empresa_transportadora_id
+            guia = cmd.numero_guia or radicacion.numero_guia
+            if not empresa or not guia or not guia.strip():
+                raise ReglaDeNegocioViolada(
+                    "Para devolver una radicación debe registrar empresa transportadora y número de guía"
+                )
 
         radicacion.cambiar_estado(cmd.nuevo_estado, cmd.motivo)
 

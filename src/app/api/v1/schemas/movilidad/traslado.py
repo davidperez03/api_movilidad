@@ -7,7 +7,7 @@ from app.domain.entities.movilidad.traslado import EstadoTraslado
 
 class CrearTrasladoRequest(BaseModel):
     cuenta_public_id: str = Field(..., min_length=5)
-    organismo_destino_id: Optional[UUID] = None
+    organismo_destino_id: UUID
     empresa_transportadora_id: Optional[UUID] = None
 
 
@@ -32,5 +32,6 @@ class TrasladoResponse(BaseModel):
     completado_en: Optional[datetime]
     creado_en: datetime
     transiciones_disponibles: list[EstadoTraslado] = []
+    dias_restantes: Optional[int] = None
 
     model_config = {"from_attributes": True}

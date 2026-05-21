@@ -49,3 +49,6 @@ class RepositorioRadicacion(ABC):
 
     @abstractmethod
     async def tiene_proceso_activo(self, cuenta_id: UUID) -> bool: ...
+
+    @abstractmethod
+    async def ultimo_completado(self, cuenta_id: UUID) -> Optional[Radicacion]: ...
