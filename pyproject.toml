@@ -1,6 +1,6 @@
 [tool.poetry]
 name = "users-api"
-version = "1.0.0"
+version = "0.3.0"
 description = "API enterprise de gestión de usuarios — Hexagonal Architecture"
 authors = ["Dev Team"]
 
