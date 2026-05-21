@@ -12,17 +12,16 @@ def _new_public_id_reg() -> str:
 class RegistroNunc:
     sesion_id: UUID
     placa: str
-    nombre_conductor: str
-    documento_conductor: str
+    departamento: str
+    municipio: str
+    entidad: str
+    unidad: str
+    ano: str
     id: UUID = field(default_factory=uuid7)
     public_id: str = field(default_factory=_new_public_id_reg)
-    numero_secuencial: int = 0
-    datos_forenses: dict = field(default_factory=dict)
+    numero_secuencial: int = 0          # lo asigna el trigger en BD
     creado_en: datetime = field(default_factory=lambda: datetime.now(timezone.utc))
     organization_id: UUID | None = None
-    creado_por: UUID | None = None
 
     def __post_init__(self) -> None:
         self.placa = self.placa.upper().strip()
-        self.nombre_conductor = self.nombre_conductor.strip()
-        self.documento_conductor = self.documento_conductor.strip()

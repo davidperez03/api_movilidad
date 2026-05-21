@@ -1,120 +1,132 @@
 import pytest
-from datetime import datetime, timezone
+from datetime import date, timezone
 from uuid import uuid4
 from app.domain.entities.movilidad.cuenta import CuentaVehiculo, TipoServicio
 from app.domain.entities.movilidad.traslado import Traslado, EstadoTraslado
 from app.domain.entities.movilidad.radicacion import Radicacion, EstadoRadicacion
 from app.domain.entities.movilidad.novedad import Novedad, TipoNovedad, EstadoNovedad
+from app.domain.entities.parqueadero.vehiculo import VehiculoParqueadero, TipoVehiculoParqueadero
+from app.domain.entities.nunc.sesion import SesionNunc
 from app.domain.exceptions import ReglaDeNegocioViolada
 
 
 # ── Cuenta ────────────────────────────────────────────────────────────────────
 
-def test_cuenta_crea_public_id_con_prefijo():
-    cuenta = CuentaVehiculo(
-        placa="ABC123",
-        tipo_servicio=TipoServicio.PARTICULAR,
-        propietario_nombre="Juan Pérez",
-        propietario_documento="123456789",
-    )
-    assert cuenta.public_id.startswith("cue_")
+def test_cuenta_public_id_con_prefijo():
+    c = CuentaVehiculo(placa="ABC123", tipo_servicio=TipoServicio.PARTICULAR)
+    assert c.public_id.startswith("cue_")
 
 
-def test_cuenta_normaliza_placa_a_mayusculas():
-    cuenta = CuentaVehiculo(
-        placa="abc123",
-        tipo_servicio=TipoServicio.PUBLICO,
-        propietario_nombre="Test",
-        propietario_documento="111",
-    )
-    assert cuenta.placa == "ABC123"
+def test_cuenta_normaliza_placa():
+    c = CuentaVehiculo(placa="abc123", tipo_servicio=TipoServicio.PUBLICO)
+    assert c.placa == "ABC123"
 
 
-def test_cuenta_asignar_numero_dos_veces_lanza_excepcion():
-    cuenta = CuentaVehiculo(
-        placa="XYZ999",
-        tipo_servicio=TipoServicio.OFICIAL,
-        propietario_nombre="Empresa",
-        propietario_documento="900123456",
-    )
-    cuenta.asignar_numero_cuenta("20240101-00001")
-    with pytest.raises(ReglaDeNegocioViolada):
-        cuenta.asignar_numero_cuenta("20240101-00002")
+def test_cuenta_tipo_servicio_valores_correctos():
+    assert TipoServicio.PARTICULAR.value == "particular"
+    assert TipoServicio.PUBLICO.value == "publico"
+    assert TipoServicio.OTRO.value == "otro"
 
 
 # ── Traslado — máquina de estados ─────────────────────────────────────────────
 
-def test_traslado_transicion_valida_sin_asignar_a_revisado():
-    t = Traslado(cuenta_id=uuid4(), organismo_destino_id=uuid4())
+def test_traslado_transicion_valida():
+    t = Traslado(cuenta_id=uuid4())
     t.cambiar_estado(EstadoTraslado.REVISADO)
     assert t.estado == EstadoTraslado.REVISADO
 
 
 def test_traslado_transicion_invalida_lanza_excepcion():
-    t = Traslado(cuenta_id=uuid4(), organismo_destino_id=uuid4())
+    t = Traslado(cuenta_id=uuid4())
     with pytest.raises(ReglaDeNegocioViolada):
         t.cambiar_estado(EstadoTraslado.TRASLADADO)
 
 
-def test_traslado_completado_en_se_marca_al_trasladar():
-    t = Traslado(cuenta_id=uuid4(), organismo_destino_id=uuid4())
+def test_traslado_flujo_completo():
+    t = Traslado(cuenta_id=uuid4())
     t.cambiar_estado(EstadoTraslado.REVISADO)
     t.cambiar_estado(EstadoTraslado.APROBADO)
     t.cambiar_estado(EstadoTraslado.ENVIADO_ORGANISMO)
     t.cambiar_estado(EstadoTraslado.TRASLADADO)
-    assert t.completado_en is not None
     assert t.estado == EstadoTraslado.TRASLADADO
+    assert not t.esta_activo
 
 
-def test_traslado_transiciones_disponibles():
-    t = Traslado(cuenta_id=uuid4(), organismo_destino_id=uuid4())
-    assert EstadoTraslado.REVISADO in t.transiciones_disponibles()
-    assert EstadoTraslado.TRASLADADO not in t.transiciones_disponibles()
+def test_traslado_vencimiento_es_date():
+    t = Traslado(cuenta_id=uuid4(), vencimiento=date.today())
+    assert isinstance(t.vencimiento, date)
+
+
+def test_traslado_transiciones_disponibles_sin_asignar():
+    t = Traslado(cuenta_id=uuid4())
+    disponibles = t.transiciones_disponibles()
+    assert EstadoTraslado.REVISADO in disponibles
+    assert EstadoTraslado.APROBADO not in disponibles
 
 
 # ── Radicación — máquina de estados ──────────────────────────────────────────
 
-def test_radicacion_transicion_valida_sin_asignar_a_pendiente():
-    r = Radicacion(cuenta_id=uuid4(), traslado_id=uuid4(), organismo_id=uuid4())
+def test_radicacion_transicion_valida():
+    r = Radicacion(cuenta_id=uuid4())
     r.cambiar_estado(EstadoRadicacion.PENDIENTE_RADICAR)
     assert r.estado == EstadoRadicacion.PENDIENTE_RADICAR
 
 
-def test_radicacion_transicion_invalida_lanza_excepcion():
-    r = Radicacion(cuenta_id=uuid4(), traslado_id=uuid4(), organismo_id=uuid4())
+def test_radicacion_transicion_invalida():
+    r = Radicacion(cuenta_id=uuid4())
     with pytest.raises(ReglaDeNegocioViolada):
         r.cambiar_estado(EstadoRadicacion.RADICADO)
 
 
-def test_radicacion_completado_en_al_radicar():
-    r = Radicacion(cuenta_id=uuid4(), traslado_id=uuid4(), organismo_id=uuid4())
+def test_radicacion_asigna_radicado_en_al_radicar():
+    r = Radicacion(cuenta_id=uuid4())
     r.cambiar_estado(EstadoRadicacion.PENDIENTE_RADICAR)
     r.cambiar_estado(EstadoRadicacion.RADICADO)
-    assert r.completado_en is not None
+    assert r.radicado_en is not None
+    assert not r.esta_activo
 
 
-def test_radicacion_asigna_numero_radicado():
-    r = Radicacion(cuenta_id=uuid4(), traslado_id=uuid4(), organismo_id=uuid4())
-    r.asignar_numero_radicado("RAD-2024-001")
-    assert r.numero_radicado == "RAD-2024-001"
+def test_radicacion_no_tiene_traslado_id():
+    r = Radicacion(cuenta_id=uuid4())
+    assert not hasattr(r, "traslado_id")
 
 
 # ── Novedad ───────────────────────────────────────────────────────────────────
 
-def test_novedad_resolver_vacia_lanza_excepcion():
-    n = Novedad(cuenta_id=uuid4(), tipo=TipoNovedad.DOCUMENTAL, descripcion="Falta documento")
+def test_novedad_proceso_tipo_valido():
+    n = Novedad(proceso_tipo="traslado", proceso_id=uuid4(),
+                tipo_novedad=TipoNovedad.DOCUMENTOS_FALTANTES, descripcion="Falta CC")
+    assert n.estado == EstadoNovedad.PENDIENTE
+
+
+def test_novedad_proceso_tipo_invalido():
     with pytest.raises(ReglaDeNegocioViolada):
-        n.resolver("")
+        Novedad(proceso_tipo="otro_tipo", proceso_id=uuid4(),
+                tipo_novedad=TipoNovedad.OTRO, descripcion="test")
+
+
+def test_novedad_resolver_vacia_lanza_excepcion():
+    n = Novedad(proceso_tipo="traslado", proceso_id=uuid4(),
+                tipo_novedad=TipoNovedad.PLACA_INCORRECTA, descripcion="Placa mal")
+    with pytest.raises(ReglaDeNegocioViolada):
+        n.resolver("", uuid4())
 
 
 def test_novedad_resolver_correctamente():
-    n = Novedad(cuenta_id=uuid4(), tipo=TipoNovedad.JURIDICA, descripcion="Lío jurídico")
-    n.resolver("Se subsanó con poder notarial")
+    n = Novedad(proceso_tipo="radicacion", proceso_id=uuid4(),
+                tipo_novedad=TipoNovedad.DOCUMENTOS_INCORRECTOS, descripcion="Guía mal")
+    n.resolver("Se corrigió la guía", uuid4())
     assert n.estado == EstadoNovedad.RESUELTA
     assert n.resuelto_en is not None
 
 
-def test_novedad_cerrar_sin_resolver_lanza_excepcion():
-    n = Novedad(cuenta_id=uuid4(), tipo=TipoNovedad.FISCAL, descripcion="Deuda tributaria")
-    with pytest.raises(ReglaDeNegocioViolada):
-        n.cerrar()
+# ── Parqueadero ───────────────────────────────────────────────────────────────
+
+def test_vehiculo_enum_valores_correctos():
+    assert TipoVehiculoParqueadero.GRUA_PLATAFORMA.value == "grua_plataforma"
+    assert TipoVehiculoParqueadero.FURGON.value == "furgon"
+
+
+def test_vehiculo_placa_normalizada():
+    v = VehiculoParqueadero(placa="abc123", tipo_vehiculo=TipoVehiculoParqueadero.CAMIONETA)
+    assert v.placa == "ABC123"
