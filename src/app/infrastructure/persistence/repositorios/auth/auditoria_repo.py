@@ -1,5 +1,3 @@
-import base64
-import json
 from datetime import datetime, timezone, timedelta
 from uuid import UUID
 
@@ -21,21 +19,7 @@ from app.domain.ports.outbound.auth.repositorio_auditoria import (
 )
 from app.infrastructure.persistence.modelos.auth.auditoria_modelo import AuditoriaModelo
 from app.infrastructure.security.auth.cadena_auditoria import firmar, verificar
-
-
-# ── Cursor helpers ─────────────────────────────────────────────────────────────
-
-def _encode_cursor(timestamp: datetime, id: UUID) -> str:
-    data = json.dumps([timestamp.isoformat(), str(id)])
-    return base64.urlsafe_b64encode(data.encode()).decode()
-
-
-def _decode_cursor(cursor: str) -> tuple[datetime, UUID]:
-    data = json.loads(base64.urlsafe_b64decode(cursor.encode()).decode())
-    ts = datetime.fromisoformat(data[0])
-    if ts.tzinfo is None:
-        ts = ts.replace(tzinfo=timezone.utc)
-    return ts, UUID(data[1])
+from app.infrastructure.persistence.repositorios._cursor import encode_cursor, decode_cursor
 
 
 # ── Repositorio ────────────────────────────────────────────────────────────────
@@ -140,7 +124,7 @@ class AuditoriaRepositorioSQL(RepositorioAuditoria):
 
         if filtros.cursor:
             try:
-                cursor_ts, cursor_id = _decode_cursor(filtros.cursor)
+                cursor_ts, cursor_id = decode_cursor(filtros.cursor)
                 stmt = stmt.where(
                     or_(
                         AuditoriaModelo.timestamp < cursor_ts,
@@ -166,7 +150,7 @@ class AuditoriaRepositorioSQL(RepositorioAuditoria):
         if len(modelos) > filtros.tamanio:
             modelos = modelos[: filtros.tamanio]
             ultimo  = modelos[-1]
-            siguiente_cursor = _encode_cursor(ultimo.timestamp, ultimo.id)
+            siguiente_cursor = encode_cursor(ultimo.timestamp, ultimo.id)
 
         return [self._a_entidad(m) for m in modelos], total, siguiente_cursor
 
