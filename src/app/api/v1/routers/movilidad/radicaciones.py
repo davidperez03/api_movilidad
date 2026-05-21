@@ -5,6 +5,7 @@ from app.infrastructure.persistence.database import get_session
 from app.infrastructure.persistence.repositorios.movilidad.cuenta_repo import CuentaRepositorioSQL
 from app.infrastructure.persistence.repositorios.movilidad.traslado_repo import TrasladoRepositorioSQL
 from app.infrastructure.persistence.repositorios.movilidad.radicacion_repo import RadicacionRepositorioSQL
+from app.infrastructure.persistence.repositorios.movilidad.notificacion_repo import NotificacionRadicacionRepositorioSQL
 from app.application.use_cases.movilidad.crear_radicacion import CrearRadicacionUseCase, ComandoCrearRadicacion
 from app.application.use_cases.movilidad.cambiar_estado_radicacion import (
     CambiarEstadoRadicacionUseCase, ComandoCambiarEstadoRadicacion,
@@ -12,10 +13,12 @@ from app.application.use_cases.movilidad.cambiar_estado_radicacion import (
 from app.domain.ports.outbound.movilidad.repositorio_radicacion import FiltrosRadicacion
 from app.domain.entities.auth.usuario import Usuario
 from app.domain.entities.movilidad.radicacion import EstadoRadicacion
-from app.domain.exceptions import ReglaDeNegocioViolada, EntidadNoEncontrada
+from app.domain.exceptions import EntidadNoEncontrada
 from app.api.v1.schemas.movilidad.radicacion import (
     CrearRadicacionRequest, CambiarEstadoRadicacionRequest, RadicacionResponse,
 )
+from app.api.v1.schemas.paginacion import PaginaResponse
+from app.api.v1.routers.movilidad._shared import dias_restantes as _dias_restantes
 from app.dependencies import requiere_permiso, get_organization_id
 
 router = APIRouter()
@@ -36,6 +39,7 @@ def _map(r) -> RadicacionResponse:
         completado_en=r.completado_en,
         creado_en=r.creado_en,
         transiciones_disponibles=r.transiciones_disponibles(),
+        dias_restantes=_dias_restantes(r.vencimiento, r.esta_activo),
     )
 
 
@@ -47,27 +51,22 @@ async def crear_radicacion(
     usuario: Usuario = Depends(requiere_permiso("movilidad.radicaciones:crear")),
     org_id: UUID | None = Depends(get_organization_id),
 ):
-    try:
-        radicacion = await CrearRadicacionUseCase(
-            CuentaRepositorioSQL(session),
-            TrasladoRepositorioSQL(session),
-            RadicacionRepositorioSQL(session),
-        ).ejecutar(ComandoCrearRadicacion(
-            cuenta_public_id=body.cuenta_public_id,
-            organismo_origen_id=body.organismo_origen_id,
-            empresa_transportadora_id=body.empresa_transportadora_id,
-            creado_por=usuario.id,
-            organization_id=org_id,
-        ))
-        request.state.audit_recurso_id = radicacion.public_id
-        return _map(radicacion)
-    except EntidadNoEncontrada as e:
-        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=str(e))
-    except ReglaDeNegocioViolada as e:
-        raise HTTPException(status_code=status.HTTP_409_CONFLICT, detail=str(e))
+    radicacion = await CrearRadicacionUseCase(
+        CuentaRepositorioSQL(session),
+        TrasladoRepositorioSQL(session),
+        RadicacionRepositorioSQL(session),
+    ).ejecutar(ComandoCrearRadicacion(
+        cuenta_public_id=body.cuenta_public_id,
+        organismo_origen_id=body.organismo_origen_id,
+        empresa_transportadora_id=body.empresa_transportadora_id,
+        creado_por=usuario.id,
+        organization_id=org_id,
+    ))
+    request.state.audit_recurso_id = radicacion.public_id
+    return _map(radicacion)
 
 
-@router.get("", response_model=list[RadicacionResponse])
+@router.get("", response_model=PaginaResponse[RadicacionResponse])
 async def listar_radicaciones(
     cuenta_id: UUID | None = Query(None),
     estado: EstadoRadicacion | None = Query(None),
@@ -82,7 +81,11 @@ async def listar_radicaciones(
         FiltrosRadicacion(cuenta_id=cuenta_id, estado=estado, vencidos=vencidos,
                           tamanio=tamanio, cursor=cursor, organization_id=org_id)
     )
-    return [_map(r) for r in pagina.items]
+    return PaginaResponse(
+        items=[_map(r) for r in pagina.items],
+        siguiente_cursor=pagina.siguiente_cursor,
+        total=pagina.tamanio,
+    )
 
 
 @router.get("/{public_id}", response_model=RadicacionResponse)
@@ -105,23 +108,54 @@ async def cambiar_estado_radicacion(
     session: AsyncSession = Depends(get_session),
     usuario: Usuario = Depends(requiere_permiso("movilidad.radicaciones:revisar")),
 ):
-    try:
-        radicacion = await CambiarEstadoRadicacionUseCase(RadicacionRepositorioSQL(session)).ejecutar(
-            ComandoCambiarEstadoRadicacion(
-                radicacion_public_id=public_id,
-                nuevo_estado=body.nuevo_estado,
-                motivo=body.motivo,
-                numero_guia=body.numero_guia,
-                numero_guia_devolucion=body.numero_guia_devolucion,
-                organismo_origen_id=body.organismo_origen_id,
-                empresa_transportadora_id=body.empresa_transportadora_id,
-                actor_id=usuario.id,
-            )
+    radicacion = await CambiarEstadoRadicacionUseCase(RadicacionRepositorioSQL(session)).ejecutar(
+        ComandoCambiarEstadoRadicacion(
+            radicacion_public_id=public_id,
+            nuevo_estado=body.nuevo_estado,
+            motivo=body.motivo,
+            numero_guia=body.numero_guia,
+            numero_guia_devolucion=body.numero_guia_devolucion,
+            organismo_origen_id=body.organismo_origen_id,
+            empresa_transportadora_id=body.empresa_transportadora_id,
+            actor_id=usuario.id,
         )
-        request.state.audit_recurso_id = radicacion.public_id
-        request.state.audit_valor_nuevo = {"estado": radicacion.estado.value}
-        return _map(radicacion)
-    except EntidadNoEncontrada as e:
-        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=str(e))
-    except ReglaDeNegocioViolada as e:
-        raise HTTPException(status_code=status.HTTP_409_CONFLICT, detail=str(e))
+    )
+    request.state.audit_recurso_id = radicacion.public_id
+    request.state.audit_valor_nuevo = {"estado": radicacion.estado.value}
+    return _map(radicacion)
+
+
+from pydantic import BaseModel
+
+
+class MarcarNotificadoRequest(BaseModel):
+    observaciones: str = ""
+
+
+@router.patch("/{public_id}/notificacion", status_code=200)
+async def marcar_solicitante_notificado(
+    public_id: str,
+    body: MarcarNotificadoRequest,
+    request: Request,
+    session: AsyncSession = Depends(get_session),
+    usuario: Usuario = Depends(requiere_permiso("movilidad.radicaciones:revisar")),
+):
+    """Registra que el solicitante fue notificado sobre el estado de su radicación."""
+    repo_rad = RadicacionRepositorioSQL(session)
+    radicacion = await repo_rad.buscar_por_public_id(public_id)
+    if not radicacion:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Radicación no encontrada")
+
+    notif = await NotificacionRadicacionRepositorioSQL(session).marcar_notificado(
+        radicacion_id=radicacion.id,
+        observaciones=body.observaciones or None,
+        actor_id=usuario.id,
+    )
+    request.state.audit_recurso_id = public_id
+    request.state.audit_valor_nuevo = {"solicitante_notificado": True}
+    return {
+        "radicacion_id": public_id,
+        "solicitante_notificado": notif.solicitante_notificado,
+        "notificado_en": notif.notificado_en,
+        "observaciones": notif.observaciones,
+    }

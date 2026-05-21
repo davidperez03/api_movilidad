@@ -6,10 +6,11 @@ from app.infrastructure.persistence.repositorios.parqueadero.vehiculo_repo impor
 from app.application.use_cases.parqueadero.crear_vehiculo import CrearVehiculoUseCase, ComandoCrearVehiculo
 from app.domain.ports.outbound.parqueadero.repositorio_vehiculo import FiltrosVehiculo
 from app.domain.entities.auth.usuario import Usuario
-from app.domain.exceptions import ReglaDeNegocioViolada, EntidadNoEncontrada
+from app.domain.exceptions import EntidadNoEncontrada
 from app.api.v1.schemas.parqueadero.vehiculo import (
     CrearVehiculoRequest, ActualizarVehiculoRequest, VehiculoResponse,
 )
+from app.api.v1.schemas.paginacion import PaginaResponse
 from app.dependencies import requiere_permiso, get_organization_id
 
 router = APIRouter()
@@ -38,27 +39,24 @@ async def crear_vehiculo(
     usuario: Usuario = Depends(requiere_permiso("parqueadero.vehiculos:gestionar")),
     org_id: UUID | None = Depends(get_organization_id),
 ):
-    try:
-        v = await CrearVehiculoUseCase(VehiculoRepositorioSQL(session)).ejecutar(
-            ComandoCrearVehiculo(
-                placa=body.placa,
-                tipo_vehiculo=body.tipo_vehiculo,
-                marca=body.marca,
-                modelo=body.modelo,
-                soat_aseguradora=body.soat_aseguradora,
-                soat_vencimiento=body.soat_vencimiento,
-                tecnomecanica_vencimiento=body.tecnomecanica_vencimiento,
-                creado_por=usuario.id,
-                organization_id=org_id,
-            )
+    v = await CrearVehiculoUseCase(VehiculoRepositorioSQL(session)).ejecutar(
+        ComandoCrearVehiculo(
+            placa=body.placa,
+            tipo_vehiculo=body.tipo_vehiculo,
+            marca=body.marca,
+            modelo=body.modelo,
+            soat_aseguradora=body.soat_aseguradora,
+            soat_vencimiento=body.soat_vencimiento,
+            tecnomecanica_vencimiento=body.tecnomecanica_vencimiento,
+            creado_por=usuario.id,
+            organization_id=org_id,
         )
-        request.state.audit_recurso_id = v.public_id
-        return _map(v)
-    except ReglaDeNegocioViolada as e:
-        raise HTTPException(status_code=status.HTTP_409_CONFLICT, detail=str(e))
+    )
+    request.state.audit_recurso_id = v.public_id
+    return _map(v)
 
 
-@router.get("", response_model=list[VehiculoResponse])
+@router.get("", response_model=PaginaResponse[VehiculoResponse])
 async def listar_vehiculos(
     placa: str | None = Query(None),
     activo: bool | None = Query(None),
@@ -71,7 +69,7 @@ async def listar_vehiculos(
     pagina = await VehiculoRepositorioSQL(session).listar(
         FiltrosVehiculo(placa=placa, activo=activo, tamanio=tamanio, cursor=cursor, organization_id=org_id)
     )
-    return [_map(v) for v in pagina.items]
+    return PaginaResponse(items=[_map(v) for v in pagina.items], siguiente_cursor=pagina.siguiente_cursor, total=pagina.tamanio)
 
 
 @router.get("/{public_id}", response_model=VehiculoResponse)

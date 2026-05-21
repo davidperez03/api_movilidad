@@ -89,8 +89,8 @@ async def test_crear_usuario_persistencia(db_session):
     # El hash en BD debe verificarse con bcrypt
     hash_en_bd = await repo_u.obtener_hash_password(usuario.id)
     assert hash_en_bd is not None
-    assert hash_svc.verificar("Segura@123!", hash_en_bd) is True
-    assert hash_svc.verificar("Incorrecta@123!", hash_en_bd) is False
+    assert await hash_svc.verificar("Segura@123!", hash_en_bd) is True
+    assert await hash_svc.verificar("Incorrecta@123!", hash_en_bd) is False
 
 
 @pytest.mark.asyncio

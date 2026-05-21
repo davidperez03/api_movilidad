@@ -138,7 +138,7 @@ def registrar_manejadores_error(app: FastAPI) -> None:
 
     @app.exception_handler(ReglaDeNegocioViolada)
     async def regla(request: Request, exc: ReglaDeNegocioViolada):
-        return JSONResponse(status_code=422, content={"detalle": str(exc)})
+        return JSONResponse(status_code=409, content={"detalle": str(exc)})
 
     @app.exception_handler(FirmaInvalida)
     async def firma(request: Request, exc: FirmaInvalida):

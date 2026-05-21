@@ -193,7 +193,7 @@ async def test_registrar_y_listar_auditoria(db_session):
     reg = _registro("usuario.login")
     await repo.registrar(reg)
 
-    registros, total = await repo.listar(FiltrosAuditoria(accion="usuario.login", tamanio=50))
+    registros, total, _ = await repo.listar(FiltrosAuditoria(accion="usuario.login", tamanio=50))
     assert total >= 1
     acciones = [r.accion for r in registros]
     assert "usuario.login" in acciones
@@ -214,7 +214,7 @@ async def test_auditoria_tenant_filtering(db_session):
     await repo.registrar(reg_a)
 
     # Listar con tenant de Org A → debe ver el registro
-    registros_a, total_a = await repo.listar(
+    registros_a, total_a, _ = await repo.listar(
         FiltrosAuditoria(tamanio=100),
         organization_id=org_a,
     )
@@ -222,7 +222,7 @@ async def test_auditoria_tenant_filtering(db_session):
     assert reg_a.id in ids_a, "Org A debe ver sus propios registros de auditoría"
 
     # Listar con tenant de Org B → NO debe ver el registro de Org A
-    registros_b, _ = await repo.listar(
+    registros_b, _, __ = await repo.listar(
         FiltrosAuditoria(tamanio=100),
         organization_id=org_b,
     )
@@ -240,14 +240,17 @@ async def test_auditoria_paginacion(db_session):
     for _ in range(5):
         await repo.registrar(_registro(accion_test))
 
-    _, total = await repo.listar(FiltrosAuditoria(accion=accion_test, tamanio=100))
+    _, total, __ = await repo.listar(FiltrosAuditoria(accion=accion_test, tamanio=100))
     assert total == 5
 
-    pagina1, _ = await repo.listar(FiltrosAuditoria(accion=accion_test, tamanio=3, pagina=1))
-    pagina2, _ = await repo.listar(FiltrosAuditoria(accion=accion_test, tamanio=3, pagina=2))
-
+    pagina1, _, cursor = await repo.listar(FiltrosAuditoria(accion=accion_test, tamanio=3))
     assert len(pagina1) == 3
+    assert cursor is not None
+
+    pagina2, _, cursor2 = await repo.listar(FiltrosAuditoria(accion=accion_test, tamanio=3, cursor=cursor))
     assert len(pagina2) == 2
+    assert cursor2 is None  # No hay más páginas
+
     ids_p1 = {r.id for r in pagina1}
     ids_p2 = {r.id for r in pagina2}
     assert ids_p1.isdisjoint(ids_p2)

@@ -71,7 +71,7 @@ async def main() -> None:
     # ─── Crear usuario ────────────────────────────────────────────────────────
     from app.infrastructure.identity import uuid7
     hash_svc = BcryptHashService()
-    hash_password = hash_svc.hashear(password)
+    hash_password = await hash_svc.hashear(password)
 
     user_id = uuid7()
     public_id = f"usr_{uuid7().hex[:27]}"

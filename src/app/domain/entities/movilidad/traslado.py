@@ -3,24 +3,30 @@ from datetime import date, datetime, timezone
 from enum import Enum
 from uuid import UUID
 from uuid6 import uuid7
+from app.domain.exceptions import ReglaDeNegocioViolada
 
 
 class EstadoTraslado(str, Enum):
-    SIN_ASIGNAR      = "sin_asignar"
-    REVISADO         = "revisado"
-    CON_NOVEDADES    = "con_novedades"
-    APROBADO         = "aprobado"
+    SIN_ASIGNAR       = "sin_asignar"
+    REVISADO          = "revisado"
+    CON_NOVEDADES     = "con_novedades"
+    APROBADO          = "aprobado"
     ENVIADO_ORGANISMO = "enviado_organismo"
-    TRASLADADO       = "trasladado"
+    TRASLADADO        = "trasladado"
+    DEVUELTO          = "devuelto"
 
+
+_TERMINALES_TRASLADO = frozenset({EstadoTraslado.TRASLADADO, EstadoTraslado.DEVUELTO})
+ESTADOS_TERMINALES_TRASLADO: frozenset[str] = frozenset(e.value for e in _TERMINALES_TRASLADO)
 
 TRANSICIONES_TRASLADO: dict[EstadoTraslado, list[EstadoTraslado]] = {
-    EstadoTraslado.SIN_ASIGNAR:       [EstadoTraslado.REVISADO],
-    EstadoTraslado.REVISADO:          [EstadoTraslado.CON_NOVEDADES, EstadoTraslado.APROBADO],
-    EstadoTraslado.CON_NOVEDADES:     [EstadoTraslado.APROBADO],
-    EstadoTraslado.APROBADO:          [EstadoTraslado.ENVIADO_ORGANISMO],
-    EstadoTraslado.ENVIADO_ORGANISMO: [EstadoTraslado.TRASLADADO],
+    EstadoTraslado.SIN_ASIGNAR:       [EstadoTraslado.REVISADO, EstadoTraslado.CON_NOVEDADES, EstadoTraslado.APROBADO],
+    EstadoTraslado.REVISADO:          [EstadoTraslado.CON_NOVEDADES, EstadoTraslado.APROBADO, EstadoTraslado.DEVUELTO],
+    EstadoTraslado.CON_NOVEDADES:     [EstadoTraslado.REVISADO, EstadoTraslado.APROBADO, EstadoTraslado.DEVUELTO],
+    EstadoTraslado.APROBADO:          [EstadoTraslado.ENVIADO_ORGANISMO, EstadoTraslado.DEVUELTO],
+    EstadoTraslado.ENVIADO_ORGANISMO: [EstadoTraslado.TRASLADADO, EstadoTraslado.DEVUELTO],
     EstadoTraslado.TRASLADADO:        [],
+    EstadoTraslado.DEVUELTO:          [],
 }
 
 
@@ -49,7 +55,6 @@ class Traslado:
     actualizado_por: UUID | None = None
 
     def cambiar_estado(self, nuevo: EstadoTraslado, motivo: str = "") -> None:
-        from app.domain.exceptions import ReglaDeNegocioViolada
         permitidos = TRANSICIONES_TRASLADO.get(self.estado, [])
         if nuevo not in permitidos:
             raise ReglaDeNegocioViolada(
@@ -63,7 +68,7 @@ class Traslado:
 
     @property
     def esta_activo(self) -> bool:
-        return self.estado != EstadoTraslado.TRASLADADO
+        return self.estado not in _TERMINALES_TRASLADO
 
     @property
     def esta_vencido(self) -> bool:

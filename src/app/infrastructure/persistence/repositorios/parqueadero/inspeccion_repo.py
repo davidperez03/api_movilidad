@@ -1,6 +1,4 @@
-import base64
-import json
-from datetime import datetime, timezone
+from datetime import datetime
 from uuid import UUID
 from typing import Optional
 from sqlalchemy import select, and_
@@ -9,19 +7,10 @@ from app.domain.entities.parqueadero.inspeccion import Inspeccion, TurnoInspecci
 from app.domain.ports.outbound.parqueadero.repositorio_inspeccion import (
     RepositorioInspeccion, FiltrosInspeccion, PaginaInspecciones,
 )
+from app.infrastructure.persistence.repositorios._cursor import encode_cursor, decode_cursor
 from app.infrastructure.persistence.modelos.parqueadero.inspeccion_modelo import InspeccionModelo
 
 
-def _encode_cursor(creado_en: datetime, id: UUID) -> str:
-    return base64.urlsafe_b64encode(json.dumps([creado_en.isoformat(), str(id)]).encode()).decode()
-
-
-def _decode_cursor(cursor: str) -> tuple[datetime, UUID]:
-    data = json.loads(base64.urlsafe_b64decode(cursor.encode()).decode())
-    dt = datetime.fromisoformat(data[0])
-    if dt.tzinfo is None:
-        dt = dt.replace(tzinfo=timezone.utc)
-    return dt, UUID(data[1])
 
 
 class InspeccionRepositorioSQL(RepositorioInspeccion):
@@ -95,7 +84,7 @@ class InspeccionRepositorioSQL(RepositorioInspeccion):
         if filtros.es_apto is not None:
             conds.append(InspeccionModelo.es_apto == filtros.es_apto)
         if filtros.cursor:
-            cursor_dt, cursor_id = _decode_cursor(filtros.cursor)
+            cursor_dt, cursor_id = decode_cursor(filtros.cursor)
             conds.append(
                 (InspeccionModelo.creado_en < cursor_dt)
                 | ((InspeccionModelo.creado_en == cursor_dt) & (InspeccionModelo.id < cursor_id))
@@ -109,7 +98,7 @@ class InspeccionRepositorioSQL(RepositorioInspeccion):
         filas = (await self._session.execute(stmt)).scalars().all()
         tiene_siguiente = len(filas) > filtros.tamanio
         items = [self._a_entidad(f) for f in filas[:filtros.tamanio]]
-        siguiente_cursor = _encode_cursor(items[-1].creado_en, items[-1].id) if tiene_siguiente else None
+        siguiente_cursor = encode_cursor(items[-1].creado_en, items[-1].id) if tiene_siguiente else None
         return PaginaInspecciones(items=items, siguiente_cursor=siguiente_cursor, tamanio=len(items))
 
     def _a_entidad(self, m: InspeccionModelo) -> Inspeccion:

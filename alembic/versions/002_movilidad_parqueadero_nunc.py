@@ -737,13 +737,20 @@ def upgrade() -> None:
                 FOR EACH ROW EXECUTE FUNCTION fn_actualizar_actualizado_en()
         """)
 
+    # ── RLS — catálogos compartidos (sin organization_id) — acceso abierto ───────
+    for tabla, policy in (
+        ("mov_organismos_transito", "rls_mov_org"),
+        ("mov_empresas_transporte", "rls_mov_emp"),
+    ):
+        _sql(f"ALTER TABLE {tabla} ENABLE ROW LEVEL SECURITY")
+        _sql(f"ALTER TABLE {tabla} FORCE  ROW LEVEL SECURITY")
+        _sql(f"CREATE POLICY {policy} ON {tabla} FOR ALL USING (true) WITH CHECK (true)")
+
     # ── RLS — tablas con política estándar de tenant ───────────────────────────
     _RLS_TENANT = (
         "fn_tenant_id() = '' OR organization_id IS NULL OR organization_id::text = fn_tenant_id()"
     )
     for tabla, policy in (
-        ("mov_organismos_transito", "rls_mov_org"),
-        ("mov_empresas_transporte", "rls_mov_emp"),
         ("mov_cuentas_vehiculos",   "rls_mov_cuentas"),
         ("mov_traslados",           "rls_mov_traslados"),
         ("mov_radicaciones",        "rls_mov_radicaciones"),

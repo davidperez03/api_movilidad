@@ -114,9 +114,9 @@ async def test_indices_criticos_existen(db_session):
         "ix_usuarios_org_estado",
         "ix_api_keys_key_prefix",
         "ix_api_keys_organization_id",
-        "ix_auditoria_actor_id_ts",
-        "ix_auditoria_organization_id_ts",
-        "ix_auditoria_org_actor_ts",
+        "ix_aud_actor_ts",
+        "ix_aud_org_ts",
+        "ix_aud_org_actor_ts",
         "ix_organizaciones_slug",
     ]
     for idx in indices_criticos:

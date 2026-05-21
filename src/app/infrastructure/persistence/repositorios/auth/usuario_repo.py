@@ -1,6 +1,4 @@
-import base64
-import json
-from datetime import datetime, timezone
+from datetime import datetime
 from uuid import UUID
 from typing import Optional
 from sqlalchemy import select, func, or_, and_
@@ -11,20 +9,10 @@ from app.domain.exceptions import EmailYaRegistrado
 from app.domain.ports.outbound.auth.repositorio_usuario import (
     RepositorioUsuario, FiltrosUsuario, PaginaUsuarios,
 )
+from app.infrastructure.persistence.repositorios._cursor import encode_cursor, decode_cursor
 from app.infrastructure.persistence.modelos.auth.usuario_modelo import UsuarioModelo
 
 
-def _encode_cursor(creado_en: datetime, id: UUID) -> str:
-    data = json.dumps([creado_en.isoformat(), str(id)])
-    return base64.urlsafe_b64encode(data.encode()).decode()
-
-
-def _decode_cursor(cursor: str) -> tuple[datetime, UUID]:
-    data = json.loads(base64.urlsafe_b64decode(cursor.encode()).decode())
-    dt = datetime.fromisoformat(data[0])
-    if dt.tzinfo is None:
-        dt = dt.replace(tzinfo=timezone.utc)
-    return dt, UUID(data[1])
 
 
 class UsuarioRepositorioSQL(RepositorioUsuario):
@@ -111,7 +99,7 @@ class UsuarioRepositorioSQL(RepositorioUsuario):
             ))
 
         if filtros.cursor:
-            cursor_ts, cursor_id = _decode_cursor(filtros.cursor)
+            cursor_ts, cursor_id = decode_cursor(filtros.cursor)
             stmt = stmt.where(or_(
                 UsuarioModelo.creado_en < cursor_ts,
                 and_(
@@ -128,7 +116,7 @@ class UsuarioRepositorioSQL(RepositorioUsuario):
         if len(modelos) > filtros.tamanio:
             modelos = modelos[:filtros.tamanio]
             ultimo = modelos[-1]
-            siguiente_cursor = _encode_cursor(ultimo.creado_en, ultimo.id)
+            siguiente_cursor = encode_cursor(ultimo.creado_en, ultimo.id)
 
         return PaginaUsuarios(
             items=[self._a_entidad(m) for m in modelos],

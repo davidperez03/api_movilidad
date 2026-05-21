@@ -7,7 +7,7 @@ from app.domain.entities.movilidad.radicacion import EstadoRadicacion
 
 class CrearRadicacionRequest(BaseModel):
     cuenta_public_id: str = Field(..., min_length=5)
-    organismo_origen_id: Optional[UUID] = None
+    organismo_origen_id: UUID
     empresa_transportadora_id: Optional[UUID] = None
 
 
@@ -34,5 +34,6 @@ class RadicacionResponse(BaseModel):
     completado_en: Optional[datetime]
     creado_en: datetime
     transiciones_disponibles: list[EstadoRadicacion] = []
+    dias_restantes: Optional[int] = None
 
     model_config = {"from_attributes": True}

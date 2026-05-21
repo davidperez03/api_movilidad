@@ -13,6 +13,7 @@ from app.api.v1.schemas.nunc.sesion import (
     ValidarSesionRequest, ValidarSesionResponse,
     CrearRegistroRequest, RegistroNuncResponse,
 )
+from app.api.v1.schemas.paginacion import PaginaResponse
 from app.dependencies import requiere_permiso, get_organization_id
 
 router = APIRouter()
@@ -112,7 +113,7 @@ async def crear_registro(
         raise HTTPException(status_code=status.HTTP_409_CONFLICT, detail=str(e))
 
 
-@router.get("/registros", response_model=list[RegistroNuncResponse])
+@router.get("/registros", response_model=PaginaResponse[RegistroNuncResponse])
 async def listar_registros(
     sesion_id: UUID | None = Query(None),
     placa: str | None = Query(None),
@@ -126,4 +127,4 @@ async def listar_registros(
     pagina = await repo.listar_registros(
         FiltrosRegistroNunc(sesion_id=sesion_id, placa=placa, tamanio=tamanio, cursor=cursor, organization_id=org_id)
     )
-    return [_map_registro(r) for r in pagina.items]
+    return PaginaResponse(items=[_map_registro(r) for r in pagina.items], siguiente_cursor=pagina.siguiente_cursor, total=pagina.tamanio)

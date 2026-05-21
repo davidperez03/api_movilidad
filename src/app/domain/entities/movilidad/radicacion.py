@@ -3,30 +3,44 @@ from datetime import date, datetime, timezone
 from enum import Enum
 from uuid import UUID
 from uuid6 import uuid7
+from app.domain.exceptions import ReglaDeNegocioViolada
 
 
 class EstadoRadicacion(str, Enum):
     SIN_ASIGNAR        = "sin_asignar"
-    PENDIENTE_RADICAR  = "pendiente_radicar"
-    CON_NOVEDADES      = "con_novedades"
-    ENVIADO_DEVOLUCION = "enviado_devolucion"
     RECIBIDO           = "recibido"
     REVISADO           = "revisado"
+    CON_NOVEDADES      = "con_novedades"
+    PENDIENTE_RADICAR  = "pendiente_radicar"
+    ENVIADO_DEVOLUCION = "enviado_devolucion"
     RADICADO           = "radicado"
+    DEVUELTO           = "devuelto"
 
+
+_TERMINALES_RADICACION = frozenset({EstadoRadicacion.RADICADO, EstadoRadicacion.DEVUELTO})
+ESTADOS_TERMINALES_RADICACION: frozenset[str] = frozenset(e.value for e in _TERMINALES_RADICACION)
 
 TRANSICIONES_RADICACION: dict[EstadoRadicacion, list[EstadoRadicacion]] = {
-    EstadoRadicacion.SIN_ASIGNAR:        [EstadoRadicacion.PENDIENTE_RADICAR],
-    EstadoRadicacion.PENDIENTE_RADICAR:  [
-        EstadoRadicacion.CON_NOVEDADES,
-        EstadoRadicacion.ENVIADO_DEVOLUCION,
-        EstadoRadicacion.RADICADO,
+    EstadoRadicacion.SIN_ASIGNAR:        [
+        EstadoRadicacion.RECIBIDO,
+        EstadoRadicacion.REVISADO,
+        EstadoRadicacion.PENDIENTE_RADICAR,
     ],
-    EstadoRadicacion.CON_NOVEDADES:      [EstadoRadicacion.PENDIENTE_RADICAR],
-    EstadoRadicacion.ENVIADO_DEVOLUCION: [EstadoRadicacion.RECIBIDO],
-    EstadoRadicacion.RECIBIDO:           [EstadoRadicacion.REVISADO],
-    EstadoRadicacion.REVISADO:           [EstadoRadicacion.RADICADO],
+    EstadoRadicacion.RECIBIDO:           [EstadoRadicacion.REVISADO, EstadoRadicacion.CON_NOVEDADES],
+    EstadoRadicacion.REVISADO:           [
+        EstadoRadicacion.CON_NOVEDADES,
+        EstadoRadicacion.PENDIENTE_RADICAR,
+        EstadoRadicacion.ENVIADO_DEVOLUCION,
+    ],
+    EstadoRadicacion.CON_NOVEDADES:      [
+        EstadoRadicacion.REVISADO,
+        EstadoRadicacion.PENDIENTE_RADICAR,
+        EstadoRadicacion.ENVIADO_DEVOLUCION,
+    ],
+    EstadoRadicacion.PENDIENTE_RADICAR:  [EstadoRadicacion.RADICADO, EstadoRadicacion.ENVIADO_DEVOLUCION],
+    EstadoRadicacion.ENVIADO_DEVOLUCION: [EstadoRadicacion.DEVUELTO],
     EstadoRadicacion.RADICADO:           [],
+    EstadoRadicacion.DEVUELTO:           [],
 }
 
 
@@ -56,7 +70,6 @@ class Radicacion:
     actualizado_por: UUID | None = None
 
     def cambiar_estado(self, nuevo: EstadoRadicacion, motivo: str = "") -> None:
-        from app.domain.exceptions import ReglaDeNegocioViolada
         permitidos = TRANSICIONES_RADICACION.get(self.estado, [])
         if nuevo not in permitidos:
             raise ReglaDeNegocioViolada(
@@ -72,7 +85,7 @@ class Radicacion:
 
     @property
     def esta_activo(self) -> bool:
-        return self.estado != EstadoRadicacion.RADICADO
+        return self.estado not in _TERMINALES_RADICACION
 
     @property
     def esta_vencido(self) -> bool:

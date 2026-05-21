@@ -1,6 +1,4 @@
-import base64
-import json
-from datetime import datetime, timezone
+from datetime import datetime
 from uuid import UUID
 from typing import Optional
 from sqlalchemy import select, and_
@@ -9,19 +7,10 @@ from app.domain.entities.parqueadero.vehiculo import VehiculoParqueadero, TipoVe
 from app.domain.ports.outbound.parqueadero.repositorio_vehiculo import (
     RepositorioVehiculo, FiltrosVehiculo, PaginaVehiculos,
 )
+from app.infrastructure.persistence.repositorios._cursor import encode_cursor, decode_cursor
 from app.infrastructure.persistence.modelos.parqueadero.vehiculo_modelo import VehiculoParqueaderoModelo
 
 
-def _encode_cursor(creado_en: datetime, id: UUID) -> str:
-    return base64.urlsafe_b64encode(json.dumps([creado_en.isoformat(), str(id)]).encode()).decode()
-
-
-def _decode_cursor(cursor: str) -> tuple[datetime, UUID]:
-    data = json.loads(base64.urlsafe_b64decode(cursor.encode()).decode())
-    dt = datetime.fromisoformat(data[0])
-    if dt.tzinfo is None:
-        dt = dt.replace(tzinfo=timezone.utc)
-    return dt, UUID(data[1])
 
 
 class VehiculoRepositorioSQL(RepositorioVehiculo):
@@ -93,7 +82,7 @@ class VehiculoRepositorioSQL(RepositorioVehiculo):
         if filtros.activo is not None:
             conds.append(VehiculoParqueaderoModelo.activo == filtros.activo)
         if filtros.cursor:
-            cursor_dt, cursor_id = _decode_cursor(filtros.cursor)
+            cursor_dt, cursor_id = decode_cursor(filtros.cursor)
             conds.append(
                 (VehiculoParqueaderoModelo.creado_en < cursor_dt)
                 | ((VehiculoParqueaderoModelo.creado_en == cursor_dt) & (VehiculoParqueaderoModelo.id < cursor_id))
@@ -107,7 +96,7 @@ class VehiculoRepositorioSQL(RepositorioVehiculo):
         filas = (await self._session.execute(stmt)).scalars().all()
         tiene_siguiente = len(filas) > filtros.tamanio
         items = [self._a_entidad(f) for f in filas[:filtros.tamanio]]
-        siguiente_cursor = _encode_cursor(items[-1].creado_en, items[-1].id) if tiene_siguiente else None
+        siguiente_cursor = encode_cursor(items[-1].creado_en, items[-1].id) if tiene_siguiente else None
         return PaginaVehiculos(items=items, siguiente_cursor=siguiente_cursor, tamanio=len(items))
 
     async def existe_placa(self, placa: str, organization_id: UUID | None = None) -> bool:
