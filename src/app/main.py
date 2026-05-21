@@ -21,9 +21,14 @@ from app.api.v1.routers.auth import auth, usuarios, roles, auditoria, api_keys
 from app.api.v1.routers.movilidad import cuentas as mov_cuentas
 from app.api.v1.routers.movilidad import traslados as mov_traslados
 from app.api.v1.routers.movilidad import radicaciones as mov_radicaciones
+from app.api.v1.routers.movilidad import novedades as mov_novedades
+from app.api.v1.routers.movilidad import reportes as mov_reportes
+from app.api.v1.routers.movilidad import catalogos as mov_catalogos
 from app.api.v1.routers.nunc import sesiones as nunc_sesiones
 from app.api.v1.routers.parqueadero import vehiculos as parq_vehiculos
 from app.api.v1.routers.parqueadero import inspecciones as parq_inspecciones
+from app.api.v1.routers.parqueadero import alertas as parq_alertas
+from app.api.v1.routers.parqueadero import inventarios as parq_inventarios
 from app.infrastructure.persistence.database import init_db
 
 _IS_DEV = config.APP_ENV == "development"
@@ -210,6 +215,9 @@ def crear_app() -> FastAPI:
     app.include_router(mov_cuentas.router,     prefix=f"{prefix}/movilidad/cuentas",     tags=["Movilidad — Cuentas"],     dependencies=[_limiter_global])
     app.include_router(mov_traslados.router,   prefix=f"{prefix}/movilidad/traslados",   tags=["Movilidad — Traslados"],   dependencies=[_limiter_global])
     app.include_router(mov_radicaciones.router,prefix=f"{prefix}/movilidad/radicaciones",tags=["Movilidad — Radicaciones"],dependencies=[_limiter_global])
+    app.include_router(mov_novedades.router,   prefix=f"{prefix}/movilidad/novedades",   tags=["Movilidad — Novedades"],   dependencies=[_limiter_global])
+    app.include_router(mov_reportes.router,   prefix=f"{prefix}/movilidad",             tags=["Movilidad — Reportes"],    dependencies=[_limiter_global])
+    app.include_router(mov_catalogos.router,  prefix=f"{prefix}/movilidad",             tags=["Movilidad — Catálogos"],   dependencies=[_limiter_global])
 
     # NUNC
     app.include_router(nunc_sesiones.router, prefix=f"{prefix}/nunc", tags=["NUNC"], dependencies=[_limiter_global])
@@ -217,6 +225,8 @@ def crear_app() -> FastAPI:
     # Parqueadero
     app.include_router(parq_vehiculos.router,    prefix=f"{prefix}/parqueadero/vehiculos",    tags=["Parqueadero — Vehículos"],    dependencies=[_limiter_global])
     app.include_router(parq_inspecciones.router, prefix=f"{prefix}/parqueadero/inspecciones", tags=["Parqueadero — Inspecciones"], dependencies=[_limiter_global])
+    app.include_router(parq_alertas.router,      prefix=f"{prefix}/parqueadero",              tags=["Parqueadero — Alertas"],      dependencies=[_limiter_global])
+    app.include_router(parq_inventarios.router,  prefix=f"{prefix}/parqueadero",              tags=["Parqueadero — Inventarios"],  dependencies=[_limiter_global])
 
     @app.get("/", include_in_schema=False)
     async def root():

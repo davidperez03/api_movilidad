@@ -1,0 +1,310 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <style>
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+
+    @page {
+      size: letter portrait;
+      margin: 18mm 18mm 22mm 18mm;
+      @bottom-center {
+        content: "Página " counter(page) " de " counter(pages);
+        font-size: 8pt;
+        color: #888;
+      }
+    }
+
+    body {
+      font-family: 'Helvetica Neue', Arial, sans-serif;
+      font-size: 10pt;
+      color: #1a1a1a;
+      line-height: 1.4;
+    }
+
+    /* ── Encabezado ──────────────────────────────────────── */
+    .header {
+      display: flex;
+      justify-content: space-between;
+      align-items: flex-start;
+      border-bottom: 3px solid #1a3c6e;
+      padding-bottom: 10px;
+      margin-bottom: 16px;
+    }
+    .header-logo {
+      font-size: 20pt;
+      font-weight: 900;
+      color: #1a3c6e;
+      letter-spacing: -0.5px;
+    }
+    .header-sub {
+      font-size: 8pt;
+      color: #555;
+      margin-top: 2px;
+    }
+    .header-right {
+      text-align: right;
+    }
+    .doc-title {
+      font-size: 13pt;
+      font-weight: 700;
+      color: #1a3c6e;
+      text-transform: uppercase;
+      letter-spacing: 1px;
+    }
+    .doc-numero {
+      font-size: 9pt;
+      color: #555;
+      margin-top: 3px;
+    }
+
+    /* ── Banda de estado ─────────────────────────────────── */
+    .estado-band {
+      background: #1a3c6e;
+      color: white;
+      padding: 6px 12px;
+      border-radius: 4px;
+      display: flex;
+      justify-content: space-between;
+      margin-bottom: 18px;
+    }
+    .estado-band span { font-size: 9pt; }
+    .estado-band .estado-val { font-weight: 700; font-size: 10pt; text-transform: uppercase; letter-spacing: 0.5px; }
+
+    /* ── Secciones de datos ──────────────────────────────── */
+    .section {
+      margin-bottom: 16px;
+      page-break-inside: avoid;
+    }
+    .section-title {
+      font-size: 8pt;
+      font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: 1px;
+      color: #1a3c6e;
+      border-bottom: 1px solid #c8d6e8;
+      padding-bottom: 4px;
+      margin-bottom: 10px;
+    }
+    .grid-2 { display: grid; grid-template-columns: 1fr 1fr; gap: 10px 24px; }
+    .grid-3 { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 10px 24px; }
+
+    .field { }
+    .field-label {
+      font-size: 7.5pt;
+      color: #888;
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+      margin-bottom: 2px;
+    }
+    .field-value {
+      font-size: 10pt;
+      font-weight: 600;
+      color: #111;
+    }
+    .field-value.mono {
+      font-family: 'Courier New', monospace;
+      font-size: 9.5pt;
+      letter-spacing: 0.5px;
+    }
+
+    /* ── Placa destacada ─────────────────────────────────── */
+    .placa-box {
+      display: inline-block;
+      background: #f0f4fa;
+      border: 2px solid #1a3c6e;
+      border-radius: 6px;
+      padding: 6px 18px;
+      font-size: 20pt;
+      font-weight: 900;
+      letter-spacing: 4px;
+      color: #1a3c6e;
+      font-family: 'Courier New', monospace;
+    }
+
+    /* ── Alerta vencimiento ──────────────────────────────── */
+    .vencimiento-box {
+      background: {% if dias_restantes is not none and dias_restantes <= 10 %}#fff3cd{% elif dias_restantes is not none and dias_restantes <= 0 %}#fde8e8{% else %}#e8f5e9{% endif %};
+      border-left: 4px solid {% if dias_restantes is not none and dias_restantes <= 10 %}#f59e0b{% elif dias_restantes is not none and dias_restantes <= 0 %}#ef4444{% else %}#22c55e{% endif %};
+      padding: 8px 12px;
+      border-radius: 0 4px 4px 0;
+    }
+    .vencimiento-box .dias {
+      font-size: 16pt;
+      font-weight: 900;
+      color: {% if dias_restantes is not none and dias_restantes <= 10 %}#d97706{% elif dias_restantes is not none and dias_restantes <= 0 %}#dc2626{% else %}#16a34a{% endif %};
+    }
+    .vencimiento-box .dias-label { font-size: 8pt; color: #555; }
+
+    /* ── Observaciones ───────────────────────────────────── */
+    .obs-box {
+      background: #f9f9f9;
+      border: 1px solid #e0e0e0;
+      border-radius: 4px;
+      padding: 8px 12px;
+      font-size: 9.5pt;
+      color: #333;
+      min-height: 36px;
+    }
+
+    /* ── Firmas ──────────────────────────────────────────── */
+    .firmas {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 40px;
+      margin-top: 32px;
+    }
+    .firma-box {
+      border-top: 1px solid #333;
+      padding-top: 6px;
+    }
+    .firma-label { font-size: 8pt; color: #555; }
+    .firma-title { font-size: 9pt; font-weight: 700; color: #111; }
+
+    /* ── Footer ──────────────────────────────────────────── */
+    .footer {
+      margin-top: 24px;
+      border-top: 1px solid #ddd;
+      padding-top: 8px;
+      display: flex;
+      justify-content: space-between;
+      font-size: 7.5pt;
+      color: #aaa;
+    }
+    .watermark {
+      position: fixed;
+      top: 50%;
+      left: 50%;
+      transform: translate(-50%, -50%) rotate(-35deg);
+      font-size: 64pt;
+      font-weight: 900;
+      color: rgba(26, 60, 110, 0.04);
+      letter-spacing: 8px;
+      text-transform: uppercase;
+      z-index: -1;
+      white-space: nowrap;
+    }
+  </style>
+</head>
+<body>
+
+<div class="watermark">REMISIÓN</div>
+
+<!-- Encabezado -->
+<div class="header">
+  <div>
+    <div class="header-logo">MOVILIDAD</div>
+    <div class="header-sub">Sistema de Gestión de Procesos Vehiculares</div>
+  </div>
+  <div class="header-right">
+    <div class="doc-title">Documento de Remisión</div>
+    <div class="doc-numero">Nº {{ traslado.public_id | upper }}</div>
+    <div class="doc-numero" style="margin-top:2px; color:#888;">Generado: {{ generado_en }}</div>
+  </div>
+</div>
+
+<!-- Banda de estado -->
+<div class="estado-band">
+  <span>Estado del proceso: <span class="estado-val">{{ traslado.estado | replace('_', ' ') }}</span></span>
+  {% if traslado.aprobado_en %}
+  <span>Aprobado: {{ traslado.aprobado_en | formato_fecha }}</span>
+  {% endif %}
+  {% if traslado.vencimiento %}
+  <span>Vence: {{ traslado.vencimiento | formato_fecha_corta }}</span>
+  {% endif %}
+</div>
+
+<!-- Vehículo -->
+<div class="section">
+  <div class="section-title">Vehículo</div>
+  <div style="display:flex; align-items:center; gap:32px;">
+    <div>
+      <div class="field-label">Placa</div>
+      <div class="placa-box">{{ cuenta.placa }}</div>
+    </div>
+    <div class="grid-2" style="flex:1;">
+      <div class="field">
+        <div class="field-label">Número de cuenta</div>
+        <div class="field-value mono">{{ cuenta.numero_cuenta }}</div>
+      </div>
+      <div class="field">
+        <div class="field-label">Tipo de servicio</div>
+        <div class="field-value">{{ cuenta.tipo_servicio | title }}</div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- Proceso -->
+<div class="section">
+  <div class="section-title">Proceso de Traslado</div>
+  <div class="grid-3">
+    <div class="field">
+      <div class="field-label">Organismo destino</div>
+      <div class="field-value">{{ organismo_destino or '—' }}</div>
+    </div>
+    <div class="field">
+      <div class="field-label">Empresa transportadora</div>
+      <div class="field-value">{{ empresa_transportadora or '—' }}</div>
+    </div>
+    <div class="field">
+      <div class="field-label">Número de guía</div>
+      <div class="field-value mono">{{ traslado.numero_guia or '—' }}</div>
+    </div>
+    <div class="field">
+      <div class="field-label">Fecha de inicio</div>
+      <div class="field-value">{{ traslado.creado_en | formato_fecha }}</div>
+    </div>
+    {% if traslado.aprobado_en %}
+    <div class="field">
+      <div class="field-label">Fecha de aprobación</div>
+      <div class="field-value">{{ traslado.aprobado_en | formato_fecha }}</div>
+    </div>
+    {% endif %}
+    {% if traslado.vencimiento %}
+    <div class="field">
+      <div class="field-label">Fecha de vencimiento</div>
+      <div class="field-value">{{ traslado.vencimiento | formato_fecha_corta }}</div>
+    </div>
+    {% endif %}
+  </div>
+</div>
+
+<!-- Días restantes -->
+{% if dias_restantes is not none and traslado.esta_activo %}
+<div class="section">
+  <div class="vencimiento-box">
+    <span class="dias">{{ dias_restantes }}</span>
+    <span class="dias-label"> días calendario restantes para el vencimiento</span>
+  </div>
+</div>
+{% endif %}
+
+<!-- Observaciones -->
+{% if traslado.observaciones %}
+<div class="section">
+  <div class="section-title">Observaciones</div>
+  <div class="obs-box">{{ traslado.observaciones }}</div>
+</div>
+{% endif %}
+
+<!-- Firmas -->
+<div class="firmas">
+  <div class="firma-box">
+    <div class="firma-title">Funcionario responsable</div>
+    <div class="firma-label">Organismo de tránsito</div>
+  </div>
+  <div class="firma-box">
+    <div class="firma-title">Empresa transportadora</div>
+    <div class="firma-label">Representante / conductor</div>
+  </div>
+</div>
+
+<!-- Footer -->
+<div class="footer">
+  <span>Documento generado por el Sistema de Gestión de Movilidad</span>
+  <span>{{ traslado.public_id | upper }} · {{ generado_en }}</span>
+</div>
+
+</body>
+</html>

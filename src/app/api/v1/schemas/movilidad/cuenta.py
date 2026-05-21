@@ -1,5 +1,6 @@
-from datetime import datetime
+from datetime import date, datetime
 from uuid import UUID
+from typing import Optional
 from pydantic import BaseModel, Field
 from app.domain.entities.movilidad.cuenta import TipoServicio
 
@@ -23,3 +24,11 @@ class ConsultaPublicaCuentaResponse(BaseModel):
     numero_cuenta: str
     placa: str
     tipo_servicio: TipoServicio
+    proceso_tipo: Optional[str] = None          # 'traslado' | 'radicacion' | None
+    proceso_estado: Optional[str] = None
+    fecha_vencimiento: Optional[date] = None
+    dias_restantes: Optional[int] = None
+    ciudad: Optional[str] = None                # nombre del organismo destino/origen
+    observaciones: Optional[str] = None
+    empresa_transporte: Optional[str] = None
+    numero_guia: Optional[str] = None
