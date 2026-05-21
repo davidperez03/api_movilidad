@@ -65,6 +65,15 @@ _ACCIONES: dict[tuple[str, str], tuple[str, CategoriaEvento]] = {
     # API Keys
     ("POST",   "/api/v1/api-keys"):                      ("api_key.creada",            CategoriaEvento.API_KEY),
     ("DELETE", "/api/v1/api-keys"):                      ("api_key.revocada",          CategoriaEvento.API_KEY),
+    # Movilidad — Cuentas
+    ("POST",   "/api/v1/movilidad/cuentas"):             ("movilidad.cuenta_creada",   CategoriaEvento.SISTEMA),
+    ("GET",    "/api/v1/movilidad/cuentas"):             ("movilidad.cuentas_listadas",CategoriaEvento.DATOS),
+    # Movilidad — Traslados
+    ("POST",   "/api/v1/movilidad/traslados"):           ("movilidad.traslado_creado", CategoriaEvento.SISTEMA),
+    ("PATCH",  "/api/v1/movilidad/traslados"):           ("movilidad.traslado_actualizado",CategoriaEvento.SISTEMA),
+    # Movilidad — Radicaciones
+    ("POST",   "/api/v1/movilidad/radicaciones"):        ("movilidad.radicacion_creada",CategoriaEvento.SISTEMA),
+    ("PATCH",  "/api/v1/movilidad/radicaciones"):        ("movilidad.radicacion_actualizada",CategoriaEvento.SISTEMA),
     # Auditoría (lecturas sensibles)
     ("GET",    "/api/v1/auditoria"):                     ("auditoria.consultada",      CategoriaEvento.DATOS),
     ("GET",    "/api/v1/auditoria/estadisticas"):        ("auditoria.estadisticas",    CategoriaEvento.DATOS),
