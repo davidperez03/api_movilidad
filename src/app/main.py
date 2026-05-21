@@ -18,6 +18,10 @@ from app.api.v1.middlewares.body_limit import BodySizeLimitMiddleware
 from app.api.v1.middlewares.lowercase_path import LowerCasePathMiddleware
 from app.api.v1.middlewares.tenant import TenantResolutionMiddleware
 from app.api.v1.routers.auth import auth, usuarios, roles, auditoria, api_keys
+from app.api.v1.routers.movilidad import cuentas as mov_cuentas
+from app.api.v1.routers.movilidad import traslados as mov_traslados
+from app.api.v1.routers.movilidad import radicaciones as mov_radicaciones
+from app.api.v1.routers.nunc import sesiones as nunc_sesiones
 from app.infrastructure.persistence.database import init_db
 
 _IS_DEV = config.APP_ENV == "development"
@@ -199,6 +203,14 @@ def crear_app() -> FastAPI:
     app.include_router(roles.router,    prefix=f"{prefix}/roles",     tags=["Roles & Permisos"], dependencies=[_limiter_global])
     app.include_router(auditoria.router,prefix=f"{prefix}/auditoria", tags=["Auditoria"],        dependencies=[_limiter_global])
     app.include_router(api_keys.router, prefix=f"{prefix}/api-keys",  tags=["API Keys"],         dependencies=[_limiter_global])
+
+    # Movilidad
+    app.include_router(mov_cuentas.router,     prefix=f"{prefix}/movilidad/cuentas",     tags=["Movilidad — Cuentas"],     dependencies=[_limiter_global])
+    app.include_router(mov_traslados.router,   prefix=f"{prefix}/movilidad/traslados",   tags=["Movilidad — Traslados"],   dependencies=[_limiter_global])
+    app.include_router(mov_radicaciones.router,prefix=f"{prefix}/movilidad/radicaciones",tags=["Movilidad — Radicaciones"],dependencies=[_limiter_global])
+
+    # NUNC
+    app.include_router(nunc_sesiones.router, prefix=f"{prefix}/nunc", tags=["NUNC"], dependencies=[_limiter_global])
 
     @app.get("/", include_in_schema=False)
     async def root():

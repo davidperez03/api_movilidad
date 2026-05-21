@@ -30,7 +30,27 @@ PERMISOS_SISTEMA: FrozenSet[str] = frozenset({
     "api_keys:leer",
     "api_keys:revocar",
     "auditoria:leer",
-    "auditoria:exportar",   # exportar registros completos a auditores externos
+    "auditoria:exportar",
+    # Movilidad
+    "movilidad:crear_cuenta",
+    "movilidad:ver_vehiculos",
+    "movilidad:crear_traslado",
+    "movilidad:aprobar_traslado",
+    "movilidad:crear_radicacion",
+    "movilidad:revisar_radicacion",
+    "movilidad:resolver_novedades",
+    "movilidad:ver_historial",
+    "movilidad:exportar_reportes",
+    # Parqueadero
+    "parqueadero:crear_inspeccion",
+    "parqueadero:aprobar_inspeccion",
+    "parqueadero:gestionar_vehiculos",
+    "parqueadero:gestionar_personal",
+    "parqueadero:ver_reportes",
+    # NUNC
+    "nunc:crear_sesion",
+    "nunc:crear_registro",
+    "nunc:ver_reportes",
 })
 
 
