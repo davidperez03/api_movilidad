@@ -1,0 +1,55 @@
+from abc import ABC, abstractmethod
+from uuid import UUID
+from typing import Optional
+from app.domain.entities.movilidad.cuenta import CuentaVehiculo
+
+
+class FiltrosCuenta:
+    def __init__(
+        self,
+        placa: str | None = None,
+        activo: bool | None = None,
+        tamanio: int = 20,
+        cursor: str | None = None,
+        organization_id: UUID | None = None,
+    ):
+        self.placa = placa
+        self.activo = activo
+        self.tamanio = tamanio
+        self.cursor = cursor
+        self.organization_id = organization_id
+
+
+class PaginaCuentas:
+    def __init__(self, items: list[CuentaVehiculo], siguiente_cursor: str | None, tamanio: int):
+        self.items = items
+        self.siguiente_cursor = siguiente_cursor
+        self.tamanio = tamanio
+        self.tiene_siguiente = siguiente_cursor is not None
+
+
+class RepositorioCuenta(ABC):
+
+    @abstractmethod
+    async def guardar(self, cuenta: CuentaVehiculo) -> CuentaVehiculo: ...
+
+    @abstractmethod
+    async def actualizar(self, cuenta: CuentaVehiculo) -> CuentaVehiculo: ...
+
+    @abstractmethod
+    async def buscar_por_id(self, id: UUID) -> Optional[CuentaVehiculo]: ...
+
+    @abstractmethod
+    async def buscar_por_public_id(self, public_id: str) -> Optional[CuentaVehiculo]: ...
+
+    @abstractmethod
+    async def buscar_por_placa(self, placa: str, organization_id: UUID | None = None) -> Optional[CuentaVehiculo]: ...
+
+    @abstractmethod
+    async def listar(self, filtros: FiltrosCuenta) -> PaginaCuentas: ...
+
+    @abstractmethod
+    async def existe_placa(self, placa: str, organization_id: UUID | None = None) -> bool: ...
+
+    @abstractmethod
+    async def generar_numero_cuenta(self) -> str: ...
