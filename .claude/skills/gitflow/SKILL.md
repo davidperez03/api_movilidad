@@ -11,6 +11,8 @@ description: >
 > **Instrucciones de respuesta:** Responder siempre en español. Ir directo al resultado — sin texto conversacional ni introducciones.
 >
 > **Flujo interactivo:** Un paso a la vez. Esperar confirmación antes de continuar. Al inicio identificar el tipo de operación (feature, bugfix, hotfix, release) y pedir los datos necesarios.
+>
+> **Commits:** Nunca agregar `Co-Authored-By: Claude ...` ni ningún trailer de autoría de Claude en los mensajes de commit.
 
 # GitFlow
 
