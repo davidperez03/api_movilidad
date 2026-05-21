@@ -1,5 +1,5 @@
 import logging
-from dataclasses import dataclass, field
+from dataclasses import dataclass
 from uuid import UUID
 from app.domain.entities.nunc.registro import RegistroNunc
 from app.domain.ports.outbound.nunc.repositorio_sesion import RepositorioSesionNunc
@@ -12,10 +12,11 @@ logger = logging.getLogger(__name__)
 class ComandoCrearRegistroNunc:
     sesion_codigo: str
     placa: str
-    nombre_conductor: str
-    documento_conductor: str
-    datos_forenses: dict = field(default_factory=dict)
-    creado_por: UUID | None = None
+    departamento: str
+    municipio: str
+    entidad: str
+    unidad: str
+    ano: str
     organization_id: UUID | None = None
 
 
@@ -26,17 +27,18 @@ class CrearRegistroNuncUseCase:
     async def ejecutar(self, cmd: ComandoCrearRegistroNunc) -> RegistroNunc:
         sesion = await self._repo.buscar_sesion_por_codigo(cmd.sesion_codigo)
         if not sesion:
-            raise EntidadNoEncontrada("Sesión NUNC no encontrada")
+            raise EntidadNoEncontrada("Código de sesión NUNC no encontrado")
         if not sesion.esta_activa:
             raise ReglaDeNegocioViolada("La sesión NUNC no está activa o ha expirado")
 
         registro = RegistroNunc(
             sesion_id=sesion.id,
             placa=cmd.placa,
-            nombre_conductor=cmd.nombre_conductor,
-            documento_conductor=cmd.documento_conductor,
-            datos_forenses=cmd.datos_forenses,
-            creado_por=cmd.creado_por,
+            departamento=cmd.departamento,
+            municipio=cmd.municipio,
+            entidad=cmd.entidad,
+            unidad=cmd.unidad,
+            ano=cmd.ano,
             organization_id=cmd.organization_id or sesion.organization_id,
         )
         registro = await self._repo.guardar_registro(registro)

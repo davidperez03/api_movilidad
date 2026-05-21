@@ -12,8 +12,6 @@ logger = logging.getLogger(__name__)
 class ComandoCrearCuenta:
     placa: str
     tipo_servicio: TipoServicio
-    propietario_nombre: str
-    propietario_documento: str
     creado_por: UUID | None = None
     organization_id: UUID | None = None
 
@@ -28,18 +26,13 @@ class CrearCuentaUseCase:
         if await self._repo.existe_placa(placa, cmd.organization_id):
             raise ReglaDeNegocioViolada(f"Ya existe una cuenta para la placa '{placa}'")
 
-        numero = await self._repo.generar_numero_cuenta()
-
         cuenta = CuentaVehiculo(
             placa=placa,
             tipo_servicio=cmd.tipo_servicio,
-            propietario_nombre=cmd.propietario_nombre,
-            propietario_documento=cmd.propietario_documento,
             creado_por=cmd.creado_por,
             organization_id=cmd.organization_id,
         )
-        cuenta.asignar_numero_cuenta(numero)
-
+        # El trigger de BD genera numero_cuenta automáticamente al hacer flush
         cuenta = await self._repo.guardar(cuenta)
         logger.info("Cuenta creada", extra={"cuenta_id": str(cuenta.id), "placa": placa})
         return cuenta

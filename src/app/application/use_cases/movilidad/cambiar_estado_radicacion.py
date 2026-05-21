@@ -13,7 +13,10 @@ class ComandoCambiarEstadoRadicacion:
     radicacion_public_id: str
     nuevo_estado: EstadoRadicacion
     motivo: str = ""
-    numero_radicado: str = ""
+    numero_guia: str = ""
+    numero_guia_devolucion: str = ""
+    organismo_origen_id: UUID | None = None
+    empresa_transportadora_id: UUID | None = None
     actor_id: UUID | None = None
 
 
@@ -28,13 +31,17 @@ class CambiarEstadoRadicacionUseCase:
 
         radicacion.cambiar_estado(cmd.nuevo_estado, cmd.motivo)
 
-        if cmd.numero_radicado and cmd.nuevo_estado == EstadoRadicacion.RADICADO:
-            radicacion.asignar_numero_radicado(cmd.numero_radicado)
+        if cmd.numero_guia:
+            radicacion.numero_guia = cmd.numero_guia
+        if cmd.numero_guia_devolucion:
+            radicacion.numero_guia_devolucion = cmd.numero_guia_devolucion
+        if cmd.organismo_origen_id:
+            radicacion.organismo_origen_id = cmd.organismo_origen_id
+        if cmd.empresa_transportadora_id:
+            radicacion.empresa_transportadora_id = cmd.empresa_transportadora_id
+        radicacion.actualizado_por = cmd.actor_id
 
         radicacion = await self._repo.actualizar(radicacion)
-
-        logger.info(
-            "Estado radicacion cambiado",
-            extra={"radicacion_id": str(radicacion.id), "estado": radicacion.estado.value},
-        )
+        logger.info("Estado radicacion cambiado",
+                    extra={"radicacion_id": str(radicacion.id), "estado": radicacion.estado.value})
         return radicacion
