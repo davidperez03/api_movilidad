@@ -12,9 +12,11 @@ _DOCS_PREFIJOS = ("/docs", "/redoc", "/openapi.json")
 _CSP_DOCS = (
     "default-src 'self'; "
     "script-src 'self' 'unsafe-inline' https://cdn.jsdelivr.net; "
-    "style-src 'self' 'unsafe-inline' https://cdn.jsdelivr.net; "
-    "img-src 'self' data: https://fastapi.tiangolo.com; "
+    "style-src 'self' 'unsafe-inline' https://cdn.jsdelivr.net https://fonts.googleapis.com; "
+    "font-src 'self' https://fonts.gstatic.com; "
+    "img-src 'self' data: blob: https://fastapi.tiangolo.com; "
     "connect-src 'self'; "
+    "worker-src blob:; "
     "frame-ancestors 'none'"
 )
 _CSP_API = "default-src 'none'; frame-ancestors 'none'"

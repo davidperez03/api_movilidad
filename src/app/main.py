@@ -167,12 +167,40 @@ async def lifespan(app: FastAPI):
 def crear_app() -> FastAPI:
     _limiter_global = Depends(AsyncRateLimiter(times=config.RATE_LIMIT_PER_MINUTE, seconds=60))
 
+    _tags = [
+        {"name": "Auth",                     "description": "Login, logout, refresh de tokens JWT y verificación de email."},
+        {"name": "Usuarios",                  "description": "Gestión de usuarios: crear, listar, activar/desactivar y cambiar contraseña."},
+        {"name": "Roles & Permisos",          "description": "Creación de roles, asignación de permisos y vinculación a usuarios (RBAC)."},
+        {"name": "API Keys",                  "description": "Generación y revocación de API Keys para integración service-to-service."},
+        {"name": "Auditoria",                 "description": "Historial inmutable de operaciones de escritura con firma criptográfica."},
+        {"name": "Movilidad — Cuentas",       "description": "Cuentas asociadas a una placa vehicular. Punto de entrada para traslados y radicaciones. Incluye consulta pública por placa."},
+        {"name": "Movilidad — Traslados",     "description": "Traslado de vehículo entre organismos. Estados: pendiente, aprobado, en_transito, recibido, completado, devuelto. Genera PDF de remisión."},
+        {"name": "Movilidad — Radicaciones",  "description": "Radicación ante el organismo destino tras traslado aprobado. Estados: pendiente, en_revision, aprobada, radicada, completada, devuelta."},
+        {"name": "Movilidad — Novedades",     "description": "Registro y resolución de novedades sobre traslados y radicaciones."},
+        {"name": "Movilidad — Reportes",      "description": "Dashboard con contadores por estado y reportes filtrables por fecha y organismo."},
+        {"name": "Movilidad — Catálogos",     "description": "Catálogos compartidos: organismos de tránsito y empresas transportadoras."},
+        {"name": "Parqueadero — Vehículos",   "description": "Vehículos del parqueadero con seguimiento de documentos (SOAT, tecnomecánica)."},
+        {"name": "Parqueadero — Inspecciones","description": "Inspecciones de ingreso y salida de vehículos."},
+        {"name": "Parqueadero — Inventarios", "description": "Insumos, stock, rangos de numeración, movimientos y cierres de inventario."},
+        {"name": "Parqueadero — Alertas",     "description": "Alertas de vencimiento de SOAT, tecnomecánica y licencias de operadores."},
+        {"name": "NUNC",                      "description": "Gestión de sesiones del módulo NUNC."},
+        {"name": "Sistema",                   "description": "Health checks y estado de la API."},
+    ]
+
     app = FastAPI(
-        title=config.APP_NAME,
-        version="1.0.0",
-        description="API de gestión de usuarios — Enterprise Ready",
+        title="API Movilidad",
+        version="0.3.0",
+        description=(
+            "API para la gestión de movilidad vehicular y parqueadero. "
+            "Módulos: traslados, radicaciones, cuentas, inventarios, reportes y auditoría.\n\n"
+            "La mayoría de endpoints requieren autenticación con Bearer token JWT. "
+            "Obtén el token en `POST /api/v1/auth/login`.\n\n"
+            "Los listados usan paginación por cursor: pasa `siguiente_cursor` del response "
+            "como parámetro `cursor` en la siguiente petición."
+        ),
+        openapi_tags=_tags,
         docs_url="/docs" if config.APP_ENV != "production" else None,
-        redoc_url="/redoc" if config.APP_ENV != "production" else None,
+        redoc_url=None,
         openapi_url="/openapi.json" if config.APP_ENV != "production" else None,
         lifespan=lifespan,
     )
@@ -228,17 +256,29 @@ def crear_app() -> FastAPI:
     app.include_router(parq_alertas.router,      prefix=f"{prefix}/parqueadero",              tags=["Parqueadero — Alertas"],      dependencies=[_limiter_global])
     app.include_router(parq_inventarios.router,  prefix=f"{prefix}/parqueadero",              tags=["Parqueadero — Inventarios"],  dependencies=[_limiter_global])
 
+    if config.APP_ENV != "production":
+        from fastapi.openapi.docs import get_redoc_html
+
+        @app.get("/redoc", include_in_schema=False)
+        async def redoc_html():
+            return get_redoc_html(
+                openapi_url="/openapi.json",
+                title=config.APP_NAME,
+                redoc_js_url="https://cdn.jsdelivr.net/npm/redoc@2.1.3/bundles/redoc.standalone.js",
+            )
+
     @app.get("/", include_in_schema=False)
     async def root():
         return {"mensaje": "Página principal"}
 
-    @app.get("/health", tags=["Sistema"], include_in_schema=False)
+    @app.get("/health", tags=["Sistema"], summary="Estado de la API")
     async def health():
+        """Verifica que la API está corriendo. No requiere autenticación."""
         if config.APP_ENV == "production":
             return {"status": "ok"}
-        return {"status": "ok", "env": config.APP_ENV, "version": "1.0.0"}
+        return {"status": "ok", "env": config.APP_ENV, "version": "0.3.0"}
 
-    @app.get("/ready", tags=["Sistema"], include_in_schema=False)
+    @app.get("/ready", tags=["Sistema"], summary="Readiness check")
     async def ready():
         from sqlalchemy import text
         from fastapi.responses import JSONResponse
