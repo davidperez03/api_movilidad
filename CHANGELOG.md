@@ -6,6 +6,21 @@ Versionamiento según [Semantic Versioning](https://semver.org/lang/es/).
 
 ---
 
+## [v0.3.1] - 2026-05-22
+
+### Fixed
+- Botón Authorize en Swagger UI habilitado con HTTPBearer
+- ReDoc pinado a versión 2.1.3 estable (CDN @next estaba caído)
+- CSP extendido con font-src, worker-src blob: y fonts.googleapis.com para ReDoc
+- /health y /ready visibles en el schema bajo tag Sistema
+
+### Changed
+- Descripción general de la API simplificada con guía de autenticación y paginación
+- Tags con descripción por módulo en OpenAPI docs
+- Ejemplos en schemas de login, cuentas, traslados y radicaciones
+
+---
+
 ## [v0.3.0] - 2026-05-21
 
 ### Added
