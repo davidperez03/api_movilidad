@@ -113,9 +113,11 @@ Solo cuando `develop` tiene todo lo que va en la versión.
 git checkout develop && git pull origin develop
 git checkout -b release/vX.Y.Z
 
-# 2. El chore(release) va AQUÍ, en la rama release — nunca en main
-git commit --allow-empty -m "chore(release): prepare vX.Y.Z"
-# (si hay cambios reales: bump version en pyproject.toml, actualizar CHANGELOG)
+# 2. Actualizar archivos de versionado — OBLIGATORIO antes del commit
+#    a) pyproject.toml → version = "X.Y.Z"
+#    b) CHANGELOG.md  → agregar sección [vX.Y.Z] con Added/Changed/Fixed/Refactored
+git add pyproject.toml CHANGELOG.md
+git commit -m "chore(release): prepare vX.Y.Z"
 
 # 3. Merge a main + tag
 git checkout main && git pull origin main
@@ -259,10 +261,30 @@ git log $(git describe --tags --abbrev=0)..HEAD --oneline
 ## Checklist antes de hacer release
 
 ```
-[ ] PYTHONPATH=src venv/Scripts/python.exe -m pytest tests/unit/ -q  → 0 fallos
-[ ] PYTHONPATH=src venv/Scripts/python.exe -c "from app.main import app; print('OK')"
+[ ] PYTHONPATH=src python -m pytest tests/unit/ -q          → 0 fallos
+[ ] PYTHONPATH=src python -c "from app.main import app"     → sin errores de import
+[ ] pyproject.toml → version bumpeada a vX.Y.Z
+[ ] CHANGELOG.md  → sección [vX.Y.Z] completa (Added / Changed / Fixed / Refactored)
 [ ] Sin archivos sensibles (.env con secretos reales)
 [ ] Historial de commits limpio (sin WIP)
+```
+
+### Estructura de entrada en CHANGELOG.md
+
+```markdown
+## [vX.Y.Z] - YYYY-MM-DD
+
+### Added
+- Nuevas funcionalidades
+
+### Changed
+- Cambios en funcionalidades existentes
+
+### Fixed
+- Correcciones de bugs
+
+### Refactored
+- Refactorizaciones sin cambio funcional
 ```
 
 ---

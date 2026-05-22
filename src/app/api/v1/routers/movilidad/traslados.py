@@ -47,7 +47,8 @@ def _map(t) -> TrasladoResponse:
     )
 
 
-@router.post("", response_model=TrasladoResponse, status_code=201)
+@router.post("", response_model=TrasladoResponse, status_code=201,
+             summary="Iniciar traslado")
 async def crear_traslado(
     body: CrearTrasladoRequest,
     request: Request,
@@ -55,6 +56,10 @@ async def crear_traslado(
     usuario: Usuario = Depends(requiere_permiso("movilidad.traslados:crear")),
     org_id: UUID | None = Depends(get_organization_id),
 ):
+    """
+    Inicia un traslado para una cuenta. Requiere que no exista un traslado activo.
+    El estado inicial es `pendiente`. Cambia a `aprobado` mediante `PATCH /{id}/estado`.
+    """
     traslado = await CrearTrasladoUseCase(
         CuentaRepositorioSQL(session), TrasladoRepositorioSQL(session), RadicacionRepositorioSQL(session),
     ).ejecutar(ComandoCrearTraslado(

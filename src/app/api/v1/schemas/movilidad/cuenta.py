@@ -9,6 +9,12 @@ class CrearCuentaRequest(BaseModel):
     placa: str = Field(..., min_length=5, max_length=10, pattern=r"^[A-Za-z0-9]+$")
     tipo_servicio: TipoServicio
 
+    model_config = {
+        "json_schema_extra": {
+            "example": {"placa": "ABC123", "tipo_servicio": "particular"}
+        }
+    }
+
 
 class CuentaResponse(BaseModel):
     id: str                     # public_id

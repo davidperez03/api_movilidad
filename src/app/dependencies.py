@@ -4,6 +4,7 @@ import time
 from datetime import datetime, timezone
 from uuid import UUID
 from fastapi import Depends, HTTPException, status, Request
+from fastapi.security import HTTPBearer, HTTPAuthorizationCredentials
 from sqlalchemy import text
 from sqlalchemy.ext.asyncio import AsyncSession
 from app.infrastructure.persistence.database import get_session
@@ -16,6 +17,7 @@ from app.config import config
 
 jwt_service = JWTService()
 logger = logging.getLogger(__name__)
+_bearer = HTTPBearer(auto_error=False)
 
 _NO_AUTENTICADO = HTTPException(
     status_code=status.HTTP_401_UNAUTHORIZED,
@@ -24,15 +26,10 @@ _NO_AUTENTICADO = HTTPException(
 )
 
 
-async def _extraer_token(request: Request) -> str:
-    """Lee el Bearer token del header Authorization. Lanza 401 si falta o tiene formato incorrecto."""
-    auth = request.headers.get("Authorization", "")
-    if not auth.startswith("Bearer "):
+async def _extraer_token(creds: HTTPAuthorizationCredentials | None = Depends(_bearer)) -> str:
+    if not creds:
         raise _NO_AUTENTICADO
-    token = auth[len("Bearer "):].strip()
-    if not token:
-        raise _NO_AUTENTICADO
-    return token
+    return creds.credentials
 
 _PERM_LOCAL: dict[str, tuple[set[str], float]] = {}
 
