@@ -32,7 +32,8 @@ def _map(c) -> CuentaResponse:
     )
 
 
-@router.post("", response_model=CuentaResponse, status_code=201)
+@router.post("", response_model=CuentaResponse, status_code=201,
+             summary="Crear cuenta de movilidad")
 async def crear_cuenta(
     body: CrearCuentaRequest,
     request: Request,
@@ -40,6 +41,7 @@ async def crear_cuenta(
     usuario: Usuario = Depends(requiere_permiso("movilidad.cuentas:crear")),
     org_id: UUID | None = Depends(get_organization_id),
 ):
+    """Registra una nueva cuenta asociada a una placa vehicular. La placa debe ser única."""
     cuenta = await CrearCuentaUseCase(CuentaRepositorioSQL(session)).ejecutar(
         ComandoCrearCuenta(
             placa=body.placa,
@@ -52,7 +54,8 @@ async def crear_cuenta(
     return _map(cuenta)
 
 
-@router.get("", response_model=PaginaResponse[CuentaResponse])
+@router.get("", response_model=PaginaResponse[CuentaResponse],
+            summary="Listar cuentas")
 async def listar_cuentas(
     placa: str | None = Query(None),
     cursor: str | None = Query(None),

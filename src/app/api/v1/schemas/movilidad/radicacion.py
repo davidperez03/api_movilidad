@@ -10,6 +10,16 @@ class CrearRadicacionRequest(BaseModel):
     organismo_origen_id: UUID
     empresa_transportadora_id: Optional[UUID] = None
 
+    model_config = {
+        "json_schema_extra": {
+            "example": {
+                "cuenta_public_id": "CTA-2024-00123",
+                "organismo_origen_id": "550e8400-e29b-41d4-a716-446655440000",
+                "empresa_transportadora_id": None,
+            }
+        }
+    }
+
 
 class CambiarEstadoRadicacionRequest(BaseModel):
     nuevo_estado: EstadoRadicacion
@@ -18,6 +28,17 @@ class CambiarEstadoRadicacionRequest(BaseModel):
     numero_guia_devolucion: str = Field("", max_length=100)
     organismo_origen_id: Optional[UUID] = None
     empresa_transportadora_id: Optional[UUID] = None
+
+    model_config = {
+        "json_schema_extra": {
+            "example": {
+                "nuevo_estado": "en_revision",
+                "motivo": "Radicación recibida, en proceso de revisión",
+                "numero_guia": "GU-2024-001",
+                "numero_guia_devolucion": "",
+            }
+        }
+    }
 
 
 class RadicacionResponse(BaseModel):

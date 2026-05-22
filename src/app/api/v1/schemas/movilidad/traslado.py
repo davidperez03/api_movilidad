@@ -10,6 +10,16 @@ class CrearTrasladoRequest(BaseModel):
     organismo_destino_id: UUID
     empresa_transportadora_id: Optional[UUID] = None
 
+    model_config = {
+        "json_schema_extra": {
+            "example": {
+                "cuenta_public_id": "CTA-2024-00123",
+                "organismo_destino_id": "550e8400-e29b-41d4-a716-446655440000",
+                "empresa_transportadora_id": None,
+            }
+        }
+    }
+
 
 class CambiarEstadoTrasladoRequest(BaseModel):
     nuevo_estado: EstadoTraslado
@@ -17,6 +27,16 @@ class CambiarEstadoTrasladoRequest(BaseModel):
     numero_guia: str = Field("", max_length=100)
     organismo_destino_id: Optional[UUID] = None
     empresa_transportadora_id: Optional[UUID] = None
+
+    model_config = {
+        "json_schema_extra": {
+            "example": {
+                "nuevo_estado": "aprobado",
+                "motivo": "Documentación completa y verificada",
+                "numero_guia": "GU-2024-001",
+            }
+        }
+    }
 
 
 class TrasladoResponse(BaseModel):

@@ -6,6 +6,12 @@ class LoginRequest(BaseModel):
     email: EmailStr
     password: SecretStr = Field(..., min_length=1, max_length=128)
 
+    model_config = {
+        "json_schema_extra": {
+            "example": {"email": "admin@movilidad.gov.co", "password": "SuperSegura123!"}
+        }
+    }
+
 
 class TokenResponse(BaseModel):
     access_token: str
